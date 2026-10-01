@@ -5,8 +5,11 @@ const { execSync } = require('child_process');
 
 const FALLBACK_KEY = 'AQ.Ab8RN6K7mP37ipQ4KUHDadNeVsyQOpM8qpOSxlt-J8kBcHQUvQ';
 
+// In-memory conversation history per sender (keeps last 10 turns like Desktop Antigravity)
+const conversationMemory = new Map();
+
 class AntigravityEngine {
-  constructor(apiKey, modelName = 'gemini-3.5-flash') {
+  constructor(apiKey, modelName = 'gemini-3.5-flash-lite') {
     this.apiKey = apiKey || FALLBACK_KEY;
     this.modelName = modelName;
     this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${this.apiKey}`;
@@ -26,45 +29,46 @@ class AntigravityEngine {
     // Always fetch latest API key dynamically from process.env or fallback
     const currentKey = process.env.GEMINI_API_KEY || this.apiKey || FALLBACK_KEY;
 
-    // Build model fallback list (primary: gemini-3.8-flash, with automatic fallbacks)
-    // Build model fallback list (fast & high capacity first, avoiding 503 high demand)
+    // Fast & high-stability models that support full Thinking and long context without 503 errors
     const preferredModel = process.env.GEMINI_MODEL || this.modelName || 'gemini-3.5-flash-lite';
     const candidateModels = Array.from(new Set([
       preferredModel,
       'gemini-3.5-flash-lite',
-      'gemini-3.8-flash',
       'gemini-3.1-flash-lite',
-      'gemini-3.7-flash',
-      'gemini-3.6-flash',
-      'gemini-3.5-flash'
+      'gemini-3.5-flash',
+      'gemini-3.8-flash',
+      'gemini-3.7-flash'
     ]));
 
     // 2. Full Antigravity Desktop Master System Instruction
-    const ANTIGRAVITY_SYSTEM_INSTRUCTION = `You are Antigravity, Google DeepMind's elite autonomous agentic AI coding assistant, reasoning machine, and master technical tutor.
-You possess the EXACT SAME depth, precision, rigor, and publication-grade standards as the Antigravity Desktop Agent.
+    const ANTIGRAVITY_SYSTEM_INSTRUCTION = `You are Antigravity, Google DeepMind's elite autonomous agentic AI coding assistant, master reasoning partner, and deep technical tutor.
+You are chatting with your user directly on WhatsApp. The user expects the EXACT SAME unmatched intelligence, natural tone, empathy, speed, and analytical rigor they experience on the Desktop Antigravity application.
 
-CRITICAL OPERATIONAL PRINCIPLES:
-1. EXHAUSTIVE DEPTH & COMPLETENESS:
-- NEVER give lazy, truncated, high-level summaries or place-holder texts (e.g. NEVER write "and so on...", "similarly for other years...", or "left as exercise").
-- When asked for study material, past year papers (PYQs), formulas, or code: write out FULL questions, numbers, step-by-step solutions, derivations, and exam short-tricks.
-- Ensure the content is rich, deeply structured, and ready to be printed or published as an authoritative guide.
+CORE BEHAVIOR & INTERACTION GUIDELINES:
+1. NATURAL & AUTHENTIC VOICE:
+   - Talk naturally, warmly, and directly as a top-tier peer and partner (pair programmer / mentor).
+   - NEVER sound like a canned robot, customer support bot, or shallow scripted bot.
+   - Match the user's language seamlessly (Hindi, Hinglish, or English) with total fluency and cultural nuance. When the user speaks in Hindi/Hinglish ("भाई...", "बताओ यार..."), respond with the same respectful, friendly, and energetic Hindi/Hinglish brotherly tone ("ज़रूर भाई!", "बिल्कुल भाई...").
 
-2. STRUCTURE & VISUAL HIERARCHY:
-- # Master Title (Clear, authoritative)
-- ## Major Chapters / Sections (Topic breakdown, strategic overview)
-- ### Specific Subsections & Question Sets (Numbered questions, multiple options A/B/C/D, Detailed Solution, Shortcut Trick)
-- Use markdown tables (| Column 1 | Column 2 |) for data, cutoff trends, formulas, or topic weightage.
-- Use Callout Blocks (> Pro Tip: / > Note:) for secret hacks, shortcuts, and pitfall warnings.
+2. EXHAUSTIVE DEPTH & RIGOR:
+   - When asked to explain a concept, debug code, or solve aptitude problems, provide deep insights, clean derivations, practical nuances, and edge cases.
+   - Do NOT give lazy 1-line answers unless explicitly asked for brevity.
+   - Use clear markdown: bold highlights (*word* for WhatsApp), bullet points, and crisp formatting.
 
-3. TONE & EXPERTISE:
-- Authoritative, deeply pedagogical, encouraging, clear, and razor-sharp.
-- Match the user's language seamlessly (Hindi, Hinglish, or English).`;
+3. PDF COMPENDIUM AUTHORING:
+   - When asked for a PDF or study material, operate as an executive author. Produce publication-grade, multi-page textbooks with complete questions, multiple choices, in-depth derivations, and 10-second Vedic/Speed-Math hacks. NEVER leave placeholders or ellipses ("...").`;
+
+    // Manage conversation history (sliding window of 10 messages)
+    if (!conversationMemory.has(senderId)) {
+      conversationMemory.set(senderId, []);
+    }
+    const history = conversationMemory.get(senderId);
 
     let userPromptText = trimmed;
     if (isPdfRequest) {
-      userPromptText = `[CRITICAL AGENTIC DIRECTIVE: The user requested a publication-grade, deeply thorough master PDF.
+      userPromptText = `[CRITICAL AGENTIC MASTER DIRECTIVE: The user requested a publication-grade, deeply thorough master PDF document.
 Act as Antigravity's master technical author and elite subject matter expert.
-DO NOT summarize or produce a high-level overview. Produce an exhaustive, full-scale compendium.
+DO NOT summarize or produce a high-level overview. Produce an exhaustive, multi-chapter compendium.
 Structure requirements:
 1. Executive Blueprint / Trend Analysis Table (| Topic | Weightage | Difficulty |).
 2. Deep Topic-by-Topic Question Bank: Full questions, options A/B/C/D, step-by-step mathematical reasoning, traditional formulas, AND 10-second speed-math shortcut tricks.
@@ -75,19 +79,24 @@ Leave NO gaps, placeholders, or ellipsis (...). Write out the complete material 
 User Request: "${trimmed}"`;
     }
 
+    // Build contents array including previous conversation turns
+    const contents = [];
+    // Include last up to 6 turns of history for natural continuous conversation
+    for (const item of history.slice(-6)) {
+      contents.push(item);
+    }
+    contents.push({
+      role: 'user',
+      parts: [{ text: userPromptText }]
+    });
+
     const payload = {
       systemInstruction: {
         parts: [{ text: ANTIGRAVITY_SYSTEM_INSTRUCTION }]
       },
-      contents: [
-        {
-          parts: [
-            { text: userPromptText }
-          ]
-        }
-      ],
+      contents: contents,
       generationConfig: {
-        temperature: 0.6,
+        temperature: 0.65,
         topP: 0.95,
         maxOutputTokens: 8192,
         thinkingConfig: {
@@ -122,10 +131,15 @@ User Request: "${trimmed}"`;
 
     if (!candidate) {
       return {
-        textResponse: `⚠️ Antigravity प्रोसेसिंग में समस्या आई: ${lastErrorMsg || "कृपया पुनः प्रयास करें।"}`,
+        textResponse: `⚠️ Antigravity प्रोसेसिंग में समस्या आई: ${lastErrorMsg || "कृपया पुनः प्रयास करें।"}\n\nआप किसी भी समय नया API Key सेट करने के लिए: !key <your_api_key> भेज सकते हैं।`,
         fileToSend: null
       };
     }
+
+    // Save to conversation history
+    history.push({ role: 'user', parts: [{ text: trimmed }] });
+    history.push({ role: 'model', parts: [{ text: candidate }] });
+    if (history.length > 12) history.splice(0, 2); // keep window bounded
 
       // If user requested a PDF, convert the generated content into a styled PDF file
       if (isPdfRequest) {

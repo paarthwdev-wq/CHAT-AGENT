@@ -341,13 +341,9 @@ async function connectToWhatsApp() {
 
         const targetJid = isSelfChat ? myJid : senderJid;
 
-        // Send text reply
+        // Send text reply (Natural, clean, exactly like Desktop Antigravity)
         if (result.textResponse) {
-          let replyText = result.textResponse;
-          if (!replyText.startsWith('🤖') && !replyText.startsWith('✅') && !replyText.startsWith('⚠️') && !replyText.startsWith('🔑') && !replyText.startsWith('📄')) {
-            replyText = `🤖 ${replyText}`;
-          }
-          await sock.sendMessage(targetJid, { text: replyText });
+          await sock.sendMessage(targetJid, { text: result.textResponse });
         }
 
         // Send generated PDF or document if available
