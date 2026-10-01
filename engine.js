@@ -25,8 +25,17 @@ class AntigravityEngine {
 
     // Always fetch latest API key dynamically from process.env or fallback
     const currentKey = process.env.GEMINI_API_KEY || this.apiKey || FALLBACK_KEY;
-    const model = process.env.GEMINI_MODEL || this.modelName || 'gemini-3.5-flash';
-    const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
+
+    // Build model fallback list (primary: gemini-3.8-flash, with automatic fallbacks)
+    const preferredModel = process.env.GEMINI_MODEL || this.modelName || 'gemini-3.8-flash';
+    const candidateModels = Array.from(new Set([
+      preferredModel,
+      'gemini-3.8-flash',
+      'gemini-3.7-flash',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-flash-latest'
+    ]));
 
     // 2. Build system instruction
     const systemPrompt = `You are Antigravity, an elite AI engineer, coding partner, and personal assistant directly connected to the user's WhatsApp.
@@ -34,29 +43,46 @@ The user might ask questions, ask to generate comprehensive guides, code, report
 Always be direct, extremely helpful, polite, and respond in the same language as the user (Hindi/Hinglish/English).
 If the user requests a PDF, write a comprehensive, well-structured document with clear headings (e.g. ## Title, ### Section), bullet points, and high-value actionable content.`;
 
-    try {
-      const payload = {
-        contents: [
-          {
-            parts: [
-              { text: `${systemPrompt}\n\nUser Message: "${trimmed}"` }
-            ]
-          }
-        ]
-      };
+    const payload = {
+      contents: [
+        {
+          parts: [
+            { text: `${systemPrompt}\n\nUser Message: "${trimmed}"` }
+          ]
+        }
+      ]
+    };
 
-      const response = await axios.post(targetUrl, payload, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 60000
-      });
+    let candidate = null;
+    let lastErrorMsg = null;
 
-      const candidate = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!candidate) {
-        return {
-          textResponse: "माफ़ कीजियेगा, AI मॉडल से कोई रेस्पॉन्स प्राप्त नहीं हुआ। कृपया पुनः प्रयास करें।",
-          fileToSend: null
-        };
+    // Try candidate models in order if one experiences high demand
+    for (const model of candidateModels) {
+      try {
+        console.log(`[Antigravity] Calling model: ${model}...`);
+        const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
+        const response = await axios.post(targetUrl, payload, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
+        });
+
+        candidate = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (candidate) {
+          console.log(`[Antigravity] Success from ${model}`);
+          break;
+        }
+      } catch (err) {
+        lastErrorMsg = err.response?.data?.error?.message || err.message;
+        console.warn(`[Antigravity] Model ${model} failed (${lastErrorMsg}), trying next fallback...`);
       }
+    }
+
+    if (!candidate) {
+      return {
+        textResponse: `⚠️ Antigravity प्रोसेसिंग में समस्या आई: ${lastErrorMsg || "कृपया पुनः प्रयास करें।"}`,
+        fileToSend: null
+      };
+    }
 
       // If user requested a PDF, convert the generated content into a styled PDF file
       if (isPdfRequest) {
@@ -114,15 +140,7 @@ If the user requests a PDF, write a comprehensive, well-structured document with
         textResponse: candidate,
         fileToSend: null
       };
-
-    } catch (err) {
-      console.error('[Antigravity] API Error:', err.response?.data || err.message);
-      return {
-        textResponse: `⚠️ Antigravity प्रोसेसिंग में समस्या आई: ${err.response?.data?.error?.message || err.message}`,
-        fileToSend: null
-      };
     }
   }
-}
 
 module.exports = AntigravityEngine;
