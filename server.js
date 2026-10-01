@@ -181,8 +181,9 @@ async function connectToWhatsApp() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
 
+    for (const msg of messages) {
       const myJid = sock.user?.id.split(':')[0] + '@s.whatsapp.net';
-      const senderJid = msg.key.remoteJid;
+      const senderJid = msg.key?.remoteJid;
 
       // 1. IGNORE NEWSLETTERS, BROADCASTS & CHANNELS (@newsletter, @broadcast)
       if (!senderJid || senderJid.endsWith('@newsletter') || senderJid.endsWith('@broadcast')) {
