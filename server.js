@@ -286,7 +286,8 @@ async function connectToWhatsApp() {
 
         // Send text reply
         if (result.textResponse) {
-          await sock.sendMessage(senderJid, { text: result.textResponse }, { quoted: msg });
+          const targetJid = senderJid;
+          await sock.sendMessage(targetJid, { text: result.textResponse });
         }
 
         // Send generated PDF or document if available
