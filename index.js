@@ -2,164 +2,265 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Target Antigravity Tunnel backend URL
-    const BACKEND_TUNNEL = "https://charming-minimum-sharing-they.trycloudflare.com";
-
-    // Forward API send calls directly to local Antigravity WhatsApp bot
-    if (url.pathname.startsWith('/api/')) {
-      const newUrl = `${BACKEND_TUNNEL}${url.pathname}${url.search}`;
-      const newReq = new Request(newUrl, {
-        method: request.method,
-        headers: request.headers,
-        body: request.body
+    // KV storage or in-memory fallback
+    // API endpoints for managing allowed numbers and settings
+    if (url.pathname === '/api/settings') {
+      if (request.method === 'POST') {
+        const body = await request.json();
+        if (env.BOT_KV) {
+          if (body.apiKey) await env.BOT_KV.put('GEMINI_API_KEY', body.apiKey);
+          if (body.allowedNumbers) await env.BOT_KV.put('ALLOWED_NUMBERS', JSON.stringify(body.allowedNumbers));
+        }
+        return new Response(JSON.stringify({ success: true, message: "Settings saved successfully!" }), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      
+      let apiKey = "AIzaSyBR6b7UkNUpVMsUws7sC6DuIqmuP3M5iGI";
+      let numbers = ["917991310726"];
+      if (env.BOT_KV) {
+        apiKey = (await env.BOT_KV.get('GEMINI_API_KEY')) || apiKey;
+        const rawNums = await env.BOT_KV.get('ALLOWED_NUMBERS');
+        if (rawNums) numbers = JSON.parse(rawNums);
+      }
+      return new Response(JSON.stringify({ apiKey, numbers }), {
+        headers: { 'Content-Type': 'application/json' }
       });
-      return fetch(newReq);
     }
 
-    // Modern, sleek Cloudflare Worker Dashboard
+    // Dynamic Admin Control Panel HTML
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Antigravity WhatsApp Gateway | Cloudflare</title>
+  <title>Antigravity WhatsApp Admin Console</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: radial-gradient(circle at top, #1e293b, #0f172a, #020617);
-      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #090d16;
+      color: #f1f5f9;
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       padding: 24px;
     }
-    .card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      padding: 40px;
-      max-width: 520px;
+    .panel {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 20px;
+      padding: 36px;
       width: 100%;
-      text-align: center;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      max-width: 540px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
     }
-    .badge {
-      display: inline-flex;
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #1f2937;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 18px;
-      border-radius: 50px;
-      background: rgba(34, 197, 94, 0.15);
-      border: 1px solid #22c55e;
-      color: #4ade80;
-      font-size: 13px;
+    }
+    .badge {
+      background: #064e3b;
+      color: #34d399;
+      font-size: 12px;
       font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .section {
       margin-bottom: 24px;
     }
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 10px #22c55e;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-    }
-    h1 {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: #ffffff;
-      margin-bottom: 12px;
-    }
-    p {
-      color: #94a3b8;
-      font-size: 15px;
-      line-height: 1.6;
-      margin-bottom: 28px;
-    }
-    .stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 28px;
-    }
-    .stat-box {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 16px;
-      padding: 16px;
-      text-align: left;
-    }
-    .stat-label {
-      font-size: 12px;
-      color: #64748b;
-      text-transform: uppercase;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .stat-val {
-      font-size: 14px;
-      color: #38bdf8;
+    label {
+      display: block;
+      font-size: 13px;
       font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    input {
+      width: 100%;
+      background: #1f2937;
+      border: 1px solid #374151;
+      padding: 12px 14px;
+      border-radius: 10px;
+      color: #f8fafc;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus {
+      border-color: #38bdf8;
     }
     .btn {
-      display: inline-block;
-      width: 100%;
-      background: linear-gradient(135deg, #0284c7, #2563eb);
-      color: white;
-      text-decoration: none;
-      padding: 14px 20px;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 15px;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+      cursor: pointer;
+      border: none;
+      font-weight: 600;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 14px;
+      transition: all 0.2s;
     }
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+    .btn-primary {
+      background: #0284c7;
+      color: white;
+      width: 100%;
+    }
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+    .add-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .btn-add {
+      background: #10b981;
+      color: white;
+      white-space: nowrap;
+    }
+    .btn-add:hover {
+      background: #059669;
+    }
+    .num-list {
+      list-style: none;
+      background: #1f2937;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #374151;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .num-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #374151;
+      font-size: 14px;
+    }
+    .num-item:last-child {
+      border-bottom: none;
+    }
+    .btn-del {
+      background: #ef4444;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .toast {
+      display: none;
+      background: #065f46;
+      color: #6ee7b7;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 16px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="badge">
-      <span class="dot"></span> CLOUDFLARE EDGE ACTIVE
-    </div>
-    <h1>⚡ Antigravity AI WhatsApp Engine</h1>
-    <p>Your WhatsApp agent is live on Cloudflare Edge with Gemini 3.5 AI, real-time messaging, and PDF generation capabilities.</p>
-    
-    <div class="stats">
-      <div class="stat-box">
-        <div class="stat-label">Connected Device</div>
-        <div class="stat-val">+91 7991310726</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">AI Intelligence</div>
-        <div class="stat-val">Gemini 3.5 Flash</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Cloud Edge</div>
-        <div class="stat-val">Cloudflare Workers</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-label">Auto PDF Tool</div>
-        <div class="stat-val">Enabled ✅</div>
-      </div>
+  <div class="panel">
+    <div class="header">
+      <div class="title">⚡ Antigravity Control Center</div>
+      <div class="badge">● Online</div>
     </div>
 
-    <a href="https://wa.me/917991310726" target="_blank" class="btn">
-      💬 Open in WhatsApp
-    </a>
+    <!-- API Key Section -->
+    <div class="section">
+      <label>Google Gemini API Key</label>
+      <input type="password" id="apiKey" value="AIzaSyBR6b7UkNUpVMsUws7sC6DuIqmuP3M5iGI" placeholder="Enter Gemini API Key..." />
+    </div>
+
+    <!-- Phone Numbers Manager -->
+    <div class="section">
+      <label>Authorized WhatsApp Numbers</label>
+      <div class="add-bar">
+        <input type="text" id="newNum" placeholder="e.g. 919876543210 (without +)" />
+        <button class="btn btn-add" onclick="addNumber()">+ Add Number</button>
+      </div>
+      <ul class="num-list" id="numList">
+        <li class="num-item">
+          <span>+91 7991310726 (Master Admin)</span>
+          <span style="color:#64748b; font-size:12px;">Default</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Save Button -->
+    <button class="btn btn-primary" onclick="saveSettings()">💾 Save & Apply Changes</button>
+    <div class="toast" id="toast">✅ Changes successfully saved to Cloudflare!</div>
   </div>
+
+  <script>
+    let numbers = ["917991310726"];
+
+    function renderList() {
+      const list = document.getElementById('numList');
+      list.innerHTML = '';
+      numbers.forEach((num, index) => {
+        const li = document.createElement('li');
+        li.className = 'num-item';
+        li.innerHTML = \`
+          <span>+\${num} \${index === 0 ? '(Master Admin)' : ''}</span>
+          \${index !== 0 ? \`<button class="btn btn-del" onclick="removeNumber(\${index})">Delete</button>\` : '<span style="color:#64748b; font-size:12px;">Protected</span>'}
+        \`;
+        list.appendChild(li);
+      });
+    }
+
+    function addNumber() {
+      const input = document.getElementById('newNum');
+      const val = input.value.trim().replace(/[^0-9]/g, '');
+      if (val.length >= 10 && !numbers.includes(val)) {
+        numbers.push(val);
+        input.value = '';
+        renderList();
+      } else {
+        alert('Please enter a valid phone number with country code (e.g. 919876543210)');
+      }
+    }
+
+    function removeNumber(index) {
+      numbers.splice(index, 1);
+      renderList();
+    }
+
+    function saveSettings() {
+      const key = document.getElementById('apiKey').value.trim();
+      localStorage.setItem('GEMINI_API_KEY', key);
+      localStorage.setItem('ALLOWED_NUMBERS', JSON.stringify(numbers));
+      
+      const toast = document.getElementById('toast');
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    // Load saved on start
+    const savedKey = localStorage.getItem('GEMINI_API_KEY');
+    if (savedKey) document.getElementById('apiKey').value = savedKey;
+    const savedNums = localStorage.getItem('ALLOWED_NUMBERS');
+    if (savedNums) {
+      try { numbers = JSON.parse(savedNums); } catch(e){}
+    }
+    renderList();
+  </script>
 </body>
 </html>`;
 
