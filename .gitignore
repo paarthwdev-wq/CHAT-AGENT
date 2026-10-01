@@ -1,0 +1,12 @@
+node_modules
+session_data
+generated_files
+.env
+.DS_Store
+*.log
+
+# managed
+**.data.json
+**.node-persist**
+**_IGNORE_**
+# end managed

@@ -1,0 +1,19 @@
+{
+  "name": "whatsapp-antigravity-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp AI Agent powered by Antigravity / Gemini with OpenWA and Render support",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@open-wa/wa-automate": "^4.69.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "form-data": "^4.0.1",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
