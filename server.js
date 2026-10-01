@@ -144,13 +144,61 @@ async function connectToWhatsApp() {
 
       if (!messageText.trim()) continue;
 
-      const allowedList = (process.env.ALLOWED_NUMBERS || '')
-        .split(',')
-        .map(n => n.trim())
-        .filter(Boolean);
-
       const senderNumber = senderJid.split('@')[0];
-      if (allowedList.length > 0 && !allowedList.includes(senderNumber) && !allowedList.includes(senderJid)) {
+      const numbersFile = path.join(__dirname, 'allowed_numbers.json');
+
+      // Load allowed numbers (Admin number 917991310726 always has master access)
+      let allowedList = [];
+      if (fs.existsSync(numbersFile)) {
+        try {
+          allowedList = JSON.parse(fs.readFileSync(numbersFile, 'utf-8'));
+        } catch (e) { allowedList = []; }
+      } else if (process.env.ALLOWED_NUMBERS) {
+        allowedList = process.env.ALLOWED_NUMBERS.split(',').map(n => n.trim()).filter(Boolean);
+      }
+
+      // Master Admin is the connected device itself (You)
+      const myNumber = sock.user?.id.split(':')[0];
+      const isAdmin = (senderNumber === myNumber) || (senderNumber === '917991310726');
+
+      // --- ADMIN COMMANDS (Directly via WhatsApp Chat) ---
+      const cleanCmd = messageText.trim();
+      if (isAdmin && cleanCmd.startsWith('!add ')) {
+        const numToAdd = cleanCmd.replace('!add ', '').replace(/[^0-9]/g, '');
+        if (numToAdd.length >= 10) {
+          if (!allowedList.includes(numToAdd)) {
+            allowedList.push(numToAdd);
+            fs.writeFileSync(numbersFile, JSON.stringify(allowedList, null, 2), 'utf-8');
+            await sock.sendMessage(senderJid, { text: `✅ Number +${numToAdd} successfully ADDED to allowed list!` }, { quoted: msg });
+          } else {
+            await sock.sendMessage(senderJid, { text: `ℹ️ Number +${numToAdd} already allowed list me hai.` }, { quoted: msg });
+          }
+        } else {
+          await sock.sendMessage(senderJid, { text: `⚠️ Invalid number format. Use: !add 919876543210` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      if (isAdmin && cleanCmd.startsWith('!remove ')) {
+        const numToRem = cleanCmd.replace('!remove ', '').replace(/[^0-9]/g, '');
+        allowedList = allowedList.filter(n => n !== numToRem);
+        fs.writeFileSync(numbersFile, JSON.stringify(allowedList, null, 2), 'utf-8');
+        await sock.sendMessage(senderJid, { text: `🗑️ Number +${numToRem} successfully REMOVED!` }, { quoted: msg });
+        continue;
+      }
+
+      if (isAdmin && cleanCmd.toLowerCase() === '!list') {
+        if (allowedList.length === 0) {
+          await sock.sendMessage(senderJid, { text: `📋 Abhi Public Mode ON hai (koi bhi use kar sakta hai). Kisi ko restrict karne ke liye '!add 91XXXXXXXXXX' use karein.` }, { quoted: msg });
+        } else {
+          const listStr = allowedList.map((n, idx) => `${idx + 1}. +${n}`).join('\n');
+          await sock.sendMessage(senderJid, { text: `📋 Allowed Numbers List:\n\n${listStr}\n\nNaya add karne ke liye: !add 91XXXXXXXXXX\nHatane ke liye: !remove 91XXXXXXXXXX` }, { quoted: msg });
+        }
+        continue;
+      }
+
+      // Authorization Check:
+      if (allowedList.length > 0 && !allowedList.includes(senderNumber) && !isAdmin) {
         console.log(`[Security] Ignored message from unauthorized number: ${senderNumber}`);
         continue;
       }
