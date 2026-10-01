@@ -36,7 +36,10 @@ def test_ai_reply(prompt="Hello Antigravity"):
         from engine import AntigravityEngine
     except ImportError:
         import urllib.request, json
-        api_key = os.environ.get("GEMINI_API_KEY", "AIzaSyBR6b7UkNUpVMsUws7sC6DuIqmuP3M5iGI")
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        if not api_key:
+            print("Please set GEMINI_API_KEY")
+            return
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
         data = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8")
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})

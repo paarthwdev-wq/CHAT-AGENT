@@ -16,7 +16,7 @@ export default {
         });
       }
       
-      let apiKey = "AIzaSyBR6b7UkNUpVMsUws7sC6DuIqmuP3M5iGI";
+      let apiKey = "";
       let numbers = ["917991310726"];
       if (env.BOT_KV) {
         apiKey = (await env.BOT_KV.get('GEMINI_API_KEY')) || apiKey;
@@ -185,7 +185,7 @@ export default {
     <!-- API Key Section -->
     <div class="section">
       <label>Google Gemini API Key</label>
-      <input type="password" id="apiKey" value="AIzaSyBR6b7UkNUpVMsUws7sC6DuIqmuP3M5iGI" placeholder="Enter Gemini API Key..." />
+      <input type="password" id="apiKey" value="" placeholder="Enter Gemini API Key (AIza...)" />
     </div>
 
     <!-- Phone Numbers Manager -->
