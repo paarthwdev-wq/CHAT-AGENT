@@ -1,39 +1,20 @@
 FROM node:20-slim
 
-# Install system dependencies for Chromium / Puppeteer
+# Install system dependencies including Python for ReportLab PDF generation
 RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    ca-certificates \
-    procps \
-    libxss1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libnss3 \
-    libx11-xcb1 \
-    libxcomposite1 \
-    libxcursor1 \
-    libxdamage1 \
-    libxi6 \
-    libxtst6 \
     python3 \
     python3-pip \
-    chromium \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies for PDF generation
+# Install ReportLab with break-system-packages flag for Debian/Ubuntu
 RUN pip3 install --no-cache-dir reportlab --break-system-packages
-
-ENV CHROME_PATH=/usr/bin/chromium
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm install --production
+# Use --omit=dev to ensure smooth, lightweight install
+RUN npm install --omit=dev --no-audit
 
 COPY . .
 
