@@ -211,8 +211,8 @@ export default {
       </div>
       <ul class="num-list" id="numList">
         <li class="num-item">
-          <span>+91 7991310726 (Master Admin)</span>
-          <span style="color:#64748b; font-size:12px;">Default</span>
+          <span>Connected Bot Device</span>
+          <span style="color:#64748b; font-size:12px;">Admin</span>
         </li>
       </ul>
     </div>

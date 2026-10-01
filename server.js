@@ -66,8 +66,8 @@ app.get('/', (req, res) => {
               <div class="stat-val">Active ✅</div>
             </div>
             <div class="stat-box">
-              <div class="stat-label">Master Admin</div>
-              <div class="stat-val">+${adminNumber}</div>
+              <div class="stat-label">Access Control</div>
+              <div class="stat-val">Admin Protected 🔒</div>
             </div>
             <div class="stat-box">
               <div class="stat-label">Hosting Platform</div>
@@ -197,9 +197,9 @@ async function connectToWhatsApp() {
         allowedList = process.env.ALLOWED_NUMBERS.split(',').map(n => n.trim()).filter(Boolean);
       }
 
-      // Master Admin is the connected device itself (You)
+      // Master Admin is automatically whoever scanned/linked the WhatsApp device
       const myNumber = sock.user?.id.split(':')[0];
-      const isAdmin = (senderNumber === myNumber) || (senderNumber === '917991310726');
+      const isAdmin = (senderNumber === myNumber);
 
       // --- ADMIN COMMANDS (Directly via WhatsApp Chat) ---
       const cleanCmd = messageText.trim();
