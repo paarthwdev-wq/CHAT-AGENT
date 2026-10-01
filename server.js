@@ -120,12 +120,21 @@ app.post('/api/send', async (req, res) => {
     }
     return res.json({ success: true });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
+// Live in-memory log buffer for instant web debugging
+const liveLogs = [];
+function addLog(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}`;
+  console.log(line);
+  liveLogs.push(line);
+  if (liveLogs.length > 100) liveLogs.shift();
+}
+
+app.get('/logs', (req, res) => {
+  res.type('text/plain').send(liveLogs.join('\n') || 'No logs recorded yet.');
 });
 
 app.listen(PORT, () => {
-  console.log(`🌐 Web/Healthcheck Server running on http://localhost:${PORT}`);
+  addLog(`🌐 Web/Healthcheck Server running on http://localhost:${PORT}`);
 });
 
 async function connectToWhatsApp() {
@@ -210,10 +219,13 @@ async function connectToWhatsApp() {
       const senderNumber = senderJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
 
       // 2. Identify if this is the owner's self-chat ("Message Yourself" / Notes to self)
+      // WhatsApp multi-device sends self-messages with fromMe=true and remoteJid either as myJid, myLid, or partner's JID
       const isSelfChat = (senderNumber === myNumber) ||
                          (senderJid === myJid) ||
                          (myLid && senderJid === myLid) ||
                          (senderJid.startsWith(myNumber));
+
+      addLog(`📩 Packet: JID=${senderJid} FromMe=${msg.key.fromMe} IsSelf=${isSelfChat} Type=${type}`);
 
       // If sent by me, but in a chat with someone else (talking to friends/family): STAY SILENT!
       if (msg.key.fromMe && !isSelfChat) {
@@ -263,8 +275,11 @@ async function connectToWhatsApp() {
       // 2) Numbers explicitly added to allowedList (via !add <phone_number>)
       // Regular contacts, family, friends NOT on the list are 100% IGNORED so personal chats are NEVER hijacked!
       if (!isSelfChat && !isAllowedContact) {
+        addLog(`🛡️ Ignored message from ${senderNumber} (not allowed & not self)`);
         continue;
       }
+
+      addLog(`✨ ACCEPTED: Processing "${messageText.slice(0, 40)}" from ${senderNumber} (Self=${isSelfChat})`);
 
       // Master Admin is automatically the owner in self-chat or admin phone
       const isAdmin = isSelfChat || (senderNumber === myNumber) || (senderNumber === '917991310726');
