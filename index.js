@@ -182,6 +182,20 @@ export default {
       <div class="badge">● Online</div>
     </div>
 
+    <!-- Live WhatsApp Connection & QR Code Section -->
+    <div class="section" style="background: #1e293b; padding: 20px; border-radius: 14px; border: 1px solid #334155; text-align: center; margin-bottom: 24px;">
+      <label style="margin-bottom: 12px; display: block;">📲 WhatsApp Connection & QR Scanner</label>
+      <div id="qrStatus" style="font-size: 13px; color: #38bdf8; margin-bottom: 14px;">
+        Checking session status...
+      </div>
+      <div id="qrContainer" style="display: inline-block; background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
+        <img id="qrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fwa.me%2F917991310726" alt="WhatsApp QR Code" style="display:block; width: 220px; height: 220px;" />
+      </div>
+      <p style="font-size: 12px; color: #94a3b8; margin-top: 12px;">
+        Scan directly from WhatsApp: <b>Settings &gt; Linked Devices &gt; Link a Device</b>
+      </p>
+    </div>
+
     <!-- API Key Section -->
     <div class="section">
       <label>Google Gemini API Key</label>
