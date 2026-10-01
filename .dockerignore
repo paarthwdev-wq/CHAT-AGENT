@@ -1,0 +1,8 @@
+node_modules
+.git
+generated_files
+.env
+*.pdf
+_IGNORE_ANTIGRAVITY_SESSION
+.node-persist
+__pycache__
