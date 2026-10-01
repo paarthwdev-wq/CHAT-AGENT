@@ -191,15 +191,23 @@ async function connectToWhatsApp() {
       // If it's sent to someone else and fromMe is true, ignore it.
       if (msg.key.fromMe && !isSelfChat) continue;
 
-      const messageText = msg.message?.conversation ||
-                          msg.message?.extendedTextMessage?.text ||
-                          msg.message?.imageMessage?.caption ||
+      const rawMsg = msg.message;
+      if (!rawMsg) continue;
+
+      const messageText = rawMsg.conversation ||
+                          rawMsg.extendedTextMessage?.text ||
+                          rawMsg.imageMessage?.caption ||
+                          rawMsg.videoMessage?.caption ||
+                          rawMsg.ephemeralMessage?.message?.conversation ||
+                          rawMsg.ephemeralMessage?.message?.extendedTextMessage?.text ||
+                          rawMsg.viewOnceMessage?.message?.conversation ||
+                          rawMsg.viewOnceMessage?.message?.extendedTextMessage?.text ||
                           '';
 
       if (!messageText.trim()) continue;
 
       // Prevent bot from replying to its own AI answers
-      if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄')) {
+      if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄') || messageText.startsWith('📋') || messageText.startsWith('🗑️')) {
         continue;
       }
 
