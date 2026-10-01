@@ -264,6 +264,18 @@ async function connectToWhatsApp() {
         continue;
       }
 
+      // Change Model directly from WhatsApp: !model <model_name>
+      const isModelCmd = /^\s*!\s*model\s*[:=]?\s*/i.test(cleanCmd);
+      if (isAdmin && isModelCmd) {
+        const newModel = cleanCmd.replace(/^\s*!\s*model\s*[:=]?\s*/i, '').trim();
+        if (newModel) {
+          process.env.GEMINI_MODEL = newModel;
+          engine.modelName = newModel;
+          await sock.sendMessage(senderJid, { text: `⚡ AI Model successfully switched to: *${newModel}*` }, { quoted: msg });
+        }
+        continue;
+      }
+
       const isAddCmd = /^\s*!\s*add\s*[:=]?\s*/i.test(cleanCmd);
       if (isAdmin && isAddCmd) {
         const numToAdd = cleanCmd.replace(/^\s*!\s*add\s*[:=]?\s*/i, '').replace(/[^0-9]/g, '');
