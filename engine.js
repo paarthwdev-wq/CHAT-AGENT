@@ -74,7 +74,10 @@ CRITICAL OPERATIONAL PRINCIPLES:
       generationConfig: {
         temperature: 0.6,
         topP: 0.95,
-        maxOutputTokens: 8192
+        maxOutputTokens: 8192,
+        thinkingConfig: {
+          thinkingBudget: 2048
+        }
       }
     };
 
