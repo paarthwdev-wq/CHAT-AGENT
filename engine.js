@@ -27,30 +27,55 @@ class AntigravityEngine {
     const currentKey = process.env.GEMINI_API_KEY || this.apiKey || FALLBACK_KEY;
 
     // Build model fallback list (primary: gemini-3.8-flash, with automatic fallbacks)
-    const preferredModel = process.env.GEMINI_MODEL || this.modelName || 'gemini-3.8-flash';
+    // Build model fallback list (fast & high capacity first, avoiding 503 high demand)
+    const preferredModel = process.env.GEMINI_MODEL || this.modelName || 'gemini-3.5-flash-lite';
     const candidateModels = Array.from(new Set([
       preferredModel,
+      'gemini-3.5-flash-lite',
       'gemini-3.8-flash',
+      'gemini-3.1-flash-lite',
       'gemini-3.7-flash',
       'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-flash-latest'
+      'gemini-3.5-flash'
     ]));
 
-    // 2. Build system instruction
-    const systemPrompt = `You are Antigravity, an elite AI engineer, coding partner, and personal assistant directly connected to the user's WhatsApp.
-The user might ask questions, ask to generate comprehensive guides, code, reports, summaries, or PDFs.
-Always be direct, extremely helpful, polite, and respond in the same language as the user (Hindi/Hinglish/English).
-If the user requests a PDF, write a comprehensive, well-structured document with clear headings (e.g. ## Title, ### Section), bullet points, and high-value actionable content.`;
+    // 2. Full Antigravity Desktop Master System Instruction
+    const ANTIGRAVITY_SYSTEM_INSTRUCTION = `You are Antigravity, Google DeepMind's elite autonomous agentic AI coding assistant, reasoning machine, and master technical tutor.
+You possess the EXACT SAME depth, precision, rigor, and publication-grade standards as the Antigravity Desktop Agent.
+
+CRITICAL OPERATIONAL PRINCIPLES:
+1. EXHAUSTIVE DEPTH & COMPLETENESS:
+- NEVER give lazy, truncated, high-level summaries or place-holder texts (e.g. NEVER write "and so on...", "similarly for other years...", or "left as exercise").
+- When asked for study material, past year papers (PYQs), formulas, or code: write out FULL questions, numbers, step-by-step solutions, derivations, and exam short-tricks.
+- Ensure the content is rich, deeply structured, and ready to be printed or published as an authoritative guide.
+
+2. STRUCTURE & VISUAL HIERARCHY:
+- # Master Title (Clear, authoritative)
+- ## Major Chapters / Sections (Topic breakdown, strategic overview)
+- ### Specific Subsections & Question Sets (Numbered questions, multiple options A/B/C/D, Detailed Solution, Shortcut Trick)
+- Use markdown tables (| Column 1 | Column 2 |) for data, cutoff trends, formulas, or topic weightage.
+- Use Callout Blocks (> Pro Tip: / > Note:) for secret hacks, shortcuts, and pitfall warnings.
+
+3. TONE & EXPERTISE:
+- Authoritative, deeply pedagogical, encouraging, clear, and razor-sharp.
+- Match the user's language seamlessly (Hindi, Hinglish, or English).`;
 
     const payload = {
+      systemInstruction: {
+        parts: [{ text: ANTIGRAVITY_SYSTEM_INSTRUCTION }]
+      },
       contents: [
         {
           parts: [
-            { text: `${systemPrompt}\n\nUser Message: "${trimmed}"` }
+            { text: trimmed }
           ]
         }
-      ]
+      ],
+      generationConfig: {
+        temperature: 0.6,
+        topP: 0.95,
+        maxOutputTokens: 8192
+      }
     };
 
     let candidate = null;

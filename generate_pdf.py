@@ -72,15 +72,37 @@ def create_pdf(output_path: str, title: str, content: str, subtitle: str = "Gene
         spaceAfter=15
     )
 
-    heading_style = ParagraphStyle(
-        'DocHeading',
+    h1_style = ParagraphStyle(
+        'DocH1',
+        parent=styles['Heading1'],
+        fontName=BOLD_FONT_NAME,
+        fontSize=16,
+        leading=20,
+        textColor=colors.HexColor('#0F172A'),
+        spaceBefore=14,
+        spaceAfter=6
+    )
+
+    h2_style = ParagraphStyle(
+        'DocH2',
         parent=styles['Heading2'],
         fontName=BOLD_FONT_NAME,
         fontSize=13,
         leading=17,
-        textColor=colors.HexColor('#0F172A'),
-        spaceBefore=12,
-        spaceAfter=6
+        textColor=colors.HexColor('#1E293B'),
+        spaceBefore=10,
+        spaceAfter=4
+    )
+
+    h3_style = ParagraphStyle(
+        'DocH3',
+        parent=styles['Heading3'],
+        fontName=BOLD_FONT_NAME,
+        fontSize=11,
+        leading=15,
+        textColor=colors.HexColor('#0284C7'),
+        spaceBefore=8,
+        spaceAfter=3
     )
 
     body_style = ParagraphStyle(
@@ -90,7 +112,7 @@ def create_pdf(output_path: str, title: str, content: str, subtitle: str = "Gene
         fontSize=10,
         leading=15,
         textColor=colors.HexColor('#334155'),
-        spaceAfter=8
+        spaceAfter=6
     )
 
     bullet_style = ParagraphStyle(
@@ -104,6 +126,31 @@ def create_pdf(output_path: str, title: str, content: str, subtitle: str = "Gene
         spaceAfter=4
     )
 
+    callout_style = ParagraphStyle(
+        'DocCallout',
+        parent=styles['Normal'],
+        fontName=FONT_NAME,
+        fontSize=9.5,
+        leading=14,
+        textColor=colors.HexColor('#1E293B'),
+        leftIndent=15,
+        spaceBefore=4,
+        spaceAfter=6
+    )
+
+    import re
+
+    def format_inline_markdown(text: str) -> str:
+        # XML escape first
+        t = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        # Bold: **bold**
+        t = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', t)
+        # Italic: *italic*
+        t = re.sub(r'(?<!\*)\*(?!\*)(.*?)\*', r'<i>\1</i>', t)
+        # Inline code: `code`
+        t = re.sub(r'`(.*?)`', r'<font face="Courier" color="#0369a1">\1</font>', t)
+        return t
+
     story = []
 
     # Title & Subtitle
@@ -111,32 +158,81 @@ def create_pdf(output_path: str, title: str, content: str, subtitle: str = "Gene
     safe_sub = clean_text_for_font(subtitle, FONT_NAME)
     story.append(Paragraph(safe_title, title_style))
     story.append(Paragraph(safe_sub, subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#0284C7'), spaceAfter=15))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#0284C7'), spaceAfter=12))
 
-    # Parse and add content
+    # Parse content lines
     lines = content.split('\n')
-    for raw_line in lines:
-        line = raw_line.strip()
-        if not line:
-            story.append(Spacer(1, 6))
-            continue
-        
-        # Clean line for XML escaping and font encoding
-        clean_line = clean_text_for_font(line, FONT_NAME)
-        safe_line = clean_line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        
-        if line.startswith('### ') or line.startswith('## ') or line.startswith('# '):
-            clean_head = safe_line.lstrip('#').strip()
-            story.append(Paragraph(f"<b>{clean_head}</b>", heading_style))
-        elif line.startswith('- ') or line.startswith('* ') or line.startswith('• '):
-            clean_bullet = safe_line[2:].strip()
-            story.append(Paragraph(f"• {clean_bullet}", bullet_style))
-        else:
-            story.append(Paragraph(safe_line, body_style))
+    i = 0
+    total_lines = len(lines)
 
-    story.append(Spacer(1, 20))
+    while i < total_lines:
+        line = lines[i].strip()
+        if not line:
+            story.append(Spacer(1, 4))
+            i += 1
+            continue
+
+        clean_line = clean_text_for_font(line, FONT_NAME)
+
+        # Check for Markdown Table: starts and ends with |
+        if clean_line.startswith('|') and clean_line.endswith('|'):
+            table_rows = []
+            while i < total_lines and lines[i].strip().startswith('|') and lines[i].strip().endswith('|'):
+                cur_row = lines[i].strip()
+                # Ignore separator lines like |---|---|
+                if not re.match(r'^\|[\s\-:|]+\|$', cur_row):
+                    cols = [c.strip() for c in cur_row.strip('|').split('|')]
+                    formatted_cols = [Paragraph(format_inline_markdown(clean_text_for_font(c, FONT_NAME)), body_style) for c in cols]
+                    table_rows.append(formatted_cols)
+                i += 1
+            
+            if table_rows:
+                try:
+                    t = Table(table_rows, colWidths=None)
+                    t.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F1F5F9')),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#0F172A')),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E8F0')),
+                        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#CBD5E1')),
+                        ('TOPPADDING', (0, 0), (-1, -1), 4),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ]))
+                    story.append(t)
+                    story.append(Spacer(1, 6))
+                except Exception:
+                    pass
+            continue
+
+        # Headings
+        if clean_line.startswith('# '):
+            story.append(Paragraph(format_inline_markdown(clean_line[2:].strip()), h1_style))
+        elif clean_line.startswith('## '):
+            story.append(Paragraph(format_inline_markdown(clean_line[3:].strip()), h2_style))
+        elif clean_line.startswith('### '):
+            story.append(Paragraph(format_inline_markdown(clean_line[4:].strip()), h3_style))
+        elif clean_line.startswith('#### '):
+            story.append(Paragraph(f"<b>{format_inline_markdown(clean_line[5:].strip())}</b>", body_style))
+        # Bullet points
+        elif clean_line.startswith('- ') or clean_line.startswith('* ') or clean_line.startswith('• '):
+            clean_bullet = clean_line[2:].strip()
+            story.append(Paragraph(f"• {format_inline_markdown(clean_bullet)}", bullet_style))
+        # Numbered lists like 1. 2.
+        elif re.match(r'^\d+\.\s', clean_line):
+            story.append(Paragraph(format_inline_markdown(clean_line), bullet_style))
+        # Callout block: > Note / > Tip
+        elif clean_line.startswith('> '):
+            callout_text = clean_line[2:].strip()
+            story.append(Paragraph(f"💡 <i>{format_inline_markdown(callout_text)}</i>", callout_style))
+        else:
+            story.append(Paragraph(format_inline_markdown(clean_line), body_style))
+
+        i += 1
+
+    story.append(Spacer(1, 15))
     story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#CBD5E1'), spaceAfter=8))
-    footer_text = "Generated automatically for you by Antigravity WhatsApp Engine."
+    footer_text = "Generated automatically by Antigravity AI Engine."
     story.append(Paragraph(footer_text, ParagraphStyle('Footer', parent=styles['Normal'], fontName=FONT_NAME, fontSize=8, textColor=colors.HexColor('#94A3B8'), alignment=1)))
 
     doc.build(story)
