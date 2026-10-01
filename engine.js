@@ -60,6 +60,21 @@ CRITICAL OPERATIONAL PRINCIPLES:
 - Authoritative, deeply pedagogical, encouraging, clear, and razor-sharp.
 - Match the user's language seamlessly (Hindi, Hinglish, or English).`;
 
+    let userPromptText = trimmed;
+    if (isPdfRequest) {
+      userPromptText = `[CRITICAL AGENTIC DIRECTIVE: The user requested a publication-grade, deeply thorough master PDF.
+Act as Antigravity's master technical author and elite subject matter expert.
+DO NOT summarize or produce a high-level overview. Produce an exhaustive, full-scale compendium.
+Structure requirements:
+1. Executive Blueprint / Trend Analysis Table (| Topic | Weightage | Difficulty |).
+2. Deep Topic-by-Topic Question Bank: Full questions, options A/B/C/D, step-by-step mathematical reasoning, traditional formulas, AND 10-second speed-math shortcut tricks.
+3. Speed-Math Formula Vault & Vedic Math Shortcuts.
+4. Tips, common pitfalls to avoid, and exam-day strategies.
+Leave NO gaps, placeholders, or ellipsis (...). Write out the complete material with academic rigor.]
+
+User Request: "${trimmed}"`;
+    }
+
     const payload = {
       systemInstruction: {
         parts: [{ text: ANTIGRAVITY_SYSTEM_INSTRUCTION }]
@@ -67,7 +82,7 @@ CRITICAL OPERATIONAL PRINCIPLES:
       contents: [
         {
           parts: [
-            { text: trimmed }
+            { text: userPromptText }
           ]
         }
       ],

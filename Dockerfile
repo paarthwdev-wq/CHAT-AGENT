@@ -1,10 +1,12 @@
 FROM node:20-slim
 
-# Install system dependencies including Python for ReportLab PDF generation
+# Install system dependencies including Python & TrueType fonts for ReportLab PDF generation
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     python-is-python3 \
+    fonts-dejavu-core \
+    fonts-liberation \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
