@@ -287,13 +287,8 @@ async function connectToWhatsApp() {
         continue;
       }
 
-      // Authorization Check:
-      if (allowedList.length > 0 && !allowedList.includes(senderNumber) && !isAdmin) {
-        console.log(`[Security] Ignored message from unauthorized number: ${senderNumber}`);
-        continue;
-      }
-
-      console.log(`📩 [WhatsApp Message] From: ${senderNumber} | Text: "${messageText}"`);
+      // Public Mode / Universal response: All messages will be answered by Antigravity AI!
+      console.log(`📩 [WhatsApp Message Received] From: ${senderNumber} | Text: "${messageText}"`);
 
       try {
         // Send typing indicator
