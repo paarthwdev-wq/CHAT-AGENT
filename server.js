@@ -18,6 +18,7 @@ const engine = new AntigravityEngine(
 
 let waSock = null;
 let currentQrText = null;
+const botSentMessageIds = new Set();
 
 // Web page for Render / Local browser viewing (Full All-in-One Dashboard)
 app.get('/', (req, res) => {
@@ -188,6 +189,11 @@ async function connectToWhatsApp() {
       const myLid = sock.user?.lid;
       const senderJid = msg.key?.remoteJid;
 
+      // Ignore messages that were sent by this bot itself
+      if (msg.key?.id && botSentMessageIds.has(msg.key.id)) {
+        continue;
+      }
+
       // 1. IGNORE NEWSLETTERS, BROADCASTS, STATUS & GROUPS
       if (!senderJid || senderJid.endsWith('@newsletter') || senderJid.endsWith('@broadcast') || senderJid === 'status@broadcast' || senderJid.endsWith('@g.us')) {
         continue;
@@ -343,7 +349,14 @@ async function connectToWhatsApp() {
 
         // Send text reply (Natural, clean, exactly like Desktop Antigravity)
         if (result.textResponse) {
-          await sock.sendMessage(targetJid, { text: result.textResponse });
+          const sentMsg = await sock.sendMessage(targetJid, { text: result.textResponse });
+          if (sentMsg?.key?.id) {
+            botSentMessageIds.add(sentMsg.key.id);
+            if (botSentMessageIds.size > 200) {
+              const firstVal = botSentMessageIds.values().next().value;
+              botSentMessageIds.delete(firstVal);
+            }
+          }
         }
 
         // Send generated PDF or document if available
@@ -351,12 +364,15 @@ async function connectToWhatsApp() {
           console.log(`📤 [Sending Document] Sending ${result.fileToSend.filename} to ${targetJid}`);
           const docBuffer = fs.readFileSync(result.fileToSend.path);
           try {
-            await sock.sendMessage(targetJid, {
+            const sentDoc = await sock.sendMessage(targetJid, {
               document: docBuffer,
               mimetype: result.fileToSend.mime || 'application/pdf',
               fileName: result.fileToSend.filename,
               caption: `📄 ${result.fileToSend.filename}`
             });
+            if (sentDoc?.key?.id) {
+              botSentMessageIds.add(sentDoc.key.id);
+            }
           } catch (docErr) {
             console.error('Failed to send document:', docErr.message);
           }
