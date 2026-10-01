@@ -19,39 +19,78 @@ const engine = new AntigravityEngine(
 let waSock = null;
 let currentQrText = null;
 
-// Web page for Render / Local browser viewing
+// Web page for Render / Local browser viewing (Full All-in-One Dashboard)
 app.get('/', (req, res) => {
+  const adminNumber = '917991310726';
+  const isConnected = !!waSock?.user;
+  const connectedNumber = waSock?.user ? waSock.user.id.split(':')[0] : null;
+
   res.send(`
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
       <head>
-        <title>Antigravity WhatsApp Bot</title>
-        <meta http-equiv="refresh" content="5">
+        <meta charset="UTF-8">
+        <title>Antigravity WhatsApp Hub</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-          .card { background: #1e293b; padding: 32px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align: center; max-width: 480px; width: 90%; }
-          h1 { color: #38bdf8; margin-top: 0; }
-          .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-weight: bold; margin-bottom: 20px; }
-          .connected { background: #15803d; color: #dcfce7; }
-          .waiting { background: #b45309; color: #fef3c7; }
-          .qr-box { background: white; padding: 16px; border-radius: 12px; display: inline-block; margin-top: 15px; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+          .card { background: #111827; border: 1px solid #1f2937; padding: 32px; border-radius: 20px; max-width: 520px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.6); text-align: center; }
+          h1 { color: #38bdf8; font-size: 24px; margin-bottom: 16px; font-weight: 800; }
+          .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; margin-bottom: 20px; }
+          .connected { background: #064e3b; color: #34d399; border: 1px solid #059669; }
+          .waiting { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
+          .qr-box { background: white; padding: 16px; border-radius: 12px; display: inline-block; margin: 15px 0; box-shadow: 0 8px 25px rgba(0,0,0,0.5); }
+          .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; text-align: left; }
+          .stat-box { background: #1f2937; padding: 12px 14px; border-radius: 12px; border: 1px solid #374151; }
+          .stat-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700; }
+          .stat-val { font-size: 13px; color: #38bdf8; font-weight: 600; margin-top: 4px; }
+          .cmd-box { background: #1e293b; padding: 16px; border-radius: 12px; text-align: left; margin-top: 20px; font-size: 13px; line-height: 1.6; border: 1px solid #334155; }
+          .cmd-box code { color: #38bdf8; background: #0f172a; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
         </style>
       </head>
       <body>
         <div class="card">
-          <h1>⚡ Antigravity WhatsApp Service</h1>
-          <div class="badge ${waSock?.user ? 'connected' : 'waiting'}">
-            ${waSock?.user ? '✅ WhatsApp CONNECTED (' + waSock.user.id.split(':')[0] + ')' : '⏳ WAITING FOR QR SCAN'}
+          <h1>⚡ Antigravity WhatsApp Engine</h1>
+          <div class="badge ${isConnected ? 'connected' : 'waiting'}">
+            ${isConnected ? '✅ ONLINE & CONNECTED (' + connectedNumber + ')' : '⏳ WAITING FOR QR SCAN'}
           </div>
-          <p style="color: #94a3b8; font-size: 14px;">
-            ${waSock?.user ? 'Your Antigravity agent is online and listening for messages!' : 'Scan the QR code below from your WhatsApp -> Linked Devices'}
-          </p>
-          ${!waSock?.user && currentQrText ? `
-            <div class="qr-box">
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(currentQrText)}" alt="Scan QR Code" />
+          
+          <div class="stats">
+            <div class="stat-box">
+              <div class="stat-label">AI Intelligence</div>
+              <div class="stat-val">Gemini 3.5 Flash</div>
             </div>
-            <p style="font-size: 12px; color: #cbd5e1; margin-top: 12px;">This page auto-refreshes every 5 seconds.</p>
-          ` : ''}
+            <div class="stat-box">
+              <div class="stat-label">Auto PDF Generator</div>
+              <div class="stat-val">Active ✅</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Master Admin</div>
+              <div class="stat-val">+${adminNumber}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Hosting Platform</div>
+              <div class="stat-val">Render Cloud 24/7</div>
+            </div>
+          </div>
+
+          ${!isConnected && currentQrText ? `
+            <div class="qr-box">
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(currentQrText)}" alt="Scan QR Code" style="display:block;" />
+            </div>
+            <p style="font-size: 13px; color: #cbd5e1;">Scan from WhatsApp: <b>Settings &gt; Linked Devices &gt; Link a Device</b></p>
+          ` : `
+            <p style="color: #94a3b8; font-size: 14px;">Your 24/7 WhatsApp AI Assistant is live and processing queries.</p>
+          `}
+
+          <div class="cmd-box">
+            <b style="color: #f1f5f9; display: block; margin-bottom: 6px;">👑 Quick WhatsApp Chat Commands:</b>
+            • Change API Key: <code>!key &lt;new_key&gt;</code><br>
+            • Add User: <code>!add &lt;phone_number&gt;</code><br>
+            • Remove User: <code>!remove &lt;phone_number&gt;</code><br>
+            • List Users: <code>!list</code>
+          </div>
         </div>
       </body>
     </html>
