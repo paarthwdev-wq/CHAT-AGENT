@@ -522,6 +522,7 @@ async function startTelegramPolling() {
 
             if (result.textResponse) {
               await sendTelegramMessage(chatId, result.textResponse);
+              addLog(`✈️ [Telegram Sent] Replied to ${senderName} (${chatId}) | Chars: ${result.textResponse.length}`);
             }
 
             if (result.fileToSend && fs.existsSync(result.fileToSend.path)) {
