@@ -181,11 +181,15 @@ async function connectToWhatsApp() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return;
 
-    for (const msg of messages) {
       const myJid = sock.user?.id.split(':')[0] + '@s.whatsapp.net';
       const senderJid = msg.key.remoteJid;
 
-      // Check if message is in "Message Yourself" (Notes to self)
+      // 1. IGNORE NEWSLETTERS, BROADCASTS & CHANNELS (@newsletter, @broadcast)
+      if (!senderJid || senderJid.endsWith('@newsletter') || senderJid.endsWith('@broadcast')) {
+        continue;
+      }
+
+      // 2. Check if message is in "Message Yourself" (Notes to self)
       const isSelfChat = (senderJid === myJid);
 
       // If it's sent to someone else and fromMe is true, ignore it.

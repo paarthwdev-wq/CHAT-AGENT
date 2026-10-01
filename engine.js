@@ -22,6 +22,11 @@ class AntigravityEngine {
     const isPdfRequest = /\b(pdf|document|किताब|नोट्स|file|report)\b/i.test(trimmed) &&
                          /\b(banao|bana do|generate|create|bhejo|send|chahiye|de do|mang)\b/i.test(trimmed);
 
+    // Always fetch latest API key dynamically from process.env or fallback
+    const currentKey = process.env.GEMINI_API_KEY || this.apiKey;
+    const model = process.env.GEMINI_MODEL || this.modelName || 'gemini-3.5-flash';
+    const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
+
     // 2. Build system instruction
     const systemPrompt = `You are Antigravity, an elite AI engineer, coding partner, and personal assistant directly connected to the user's WhatsApp.
 The user might ask questions, ask to generate comprehensive guides, code, reports, summaries, or PDFs.
@@ -39,7 +44,7 @@ If the user requests a PDF, write a comprehensive, well-structured document with
         ]
       };
 
-      const response = await axios.post(this.apiUrl, payload, {
+      const response = await axios.post(targetUrl, payload, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 60000
       });
