@@ -179,10 +179,12 @@ async function connectToWhatsApp() {
 
   // Handle incoming messages
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return;
+    // Accept both 'notify' (incoming from other users) and 'append' (self-notes sent from phone)
+    if (type !== 'notify' && type !== 'append') return;
 
     for (const msg of messages) {
-      const myJid = sock.user?.id.split(':')[0] + '@s.whatsapp.net';
+      const myNumber = sock.user?.id ? sock.user.id.split(':')[0].replace(/[^0-9]/g, '') : null;
+      const myJid = myNumber ? `${myNumber}@s.whatsapp.net` : null;
       const senderJid = msg.key?.remoteJid;
 
       // 1. IGNORE NEWSLETTERS, BROADCASTS & CHANNELS (@newsletter, @broadcast)
@@ -190,8 +192,10 @@ async function connectToWhatsApp() {
         continue;
       }
 
+      const senderNumber = senderJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+
       // 2. Check if message is in "Message Yourself" (Notes to self)
-      const isSelfChat = (senderJid === myJid);
+      const isSelfChat = (senderJid === myJid) || (myNumber && senderNumber === myNumber);
 
       // If it's sent to someone else and fromMe is true, ignore it.
       if (msg.key.fromMe && !isSelfChat) continue;
@@ -211,12 +215,11 @@ async function connectToWhatsApp() {
 
       if (!messageText.trim()) continue;
 
-      // Prevent bot from replying to its own AI answers
-      if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄') || messageText.startsWith('📋') || messageText.startsWith('🗑️')) {
+      // Prevent bot from replying to its own AI answers or command confirmations
+      if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄') || messageText.startsWith('📋') || messageText.startsWith('🗑️') || messageText.startsWith('⚠️') || messageText.startsWith('ℹ️')) {
         continue;
       }
 
-      const senderNumber = senderJid.split('@')[0];
       const numbersFile = path.join(__dirname, 'allowed_numbers.json');
 
       // Load allowed numbers (Admin number 917991310726 always has master access)
@@ -230,7 +233,6 @@ async function connectToWhatsApp() {
       }
 
       // Master Admin is automatically whoever scanned/linked the WhatsApp device
-      const myNumber = sock.user?.id.split(':')[0];
       const isAdmin = (senderNumber === myNumber);
 
       // --- ADMIN COMMANDS (Directly via WhatsApp Chat) ---
@@ -307,7 +309,11 @@ async function connectToWhatsApp() {
         // Send text reply
         if (result.textResponse) {
           const targetJid = senderJid;
-          await sock.sendMessage(targetJid, { text: result.textResponse });
+          let replyText = result.textResponse;
+          if (!replyText.startsWith('🤖') && !replyText.startsWith('✅') && !replyText.startsWith('⚠️') && !replyText.startsWith('🔑')) {
+            replyText = `🤖 ${replyText}`;
+          }
+          await sock.sendMessage(targetJid, { text: replyText });
         }
 
         // Send generated PDF or document if available

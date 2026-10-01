@@ -3,11 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
+const FALLBACK_KEY = 'AQ.Ab8RN6JQdy19LPGRkCTXkL0uCbTv9Uft-cxD-_Q1DCm8urqUIg';
+
 class AntigravityEngine {
   constructor(apiKey, modelName = 'gemini-3.5-flash') {
-    this.apiKey = apiKey;
+    this.apiKey = apiKey || FALLBACK_KEY;
     this.modelName = modelName;
-    this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    this.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${this.apiKey}`;
   }
 
   /**
@@ -23,7 +25,7 @@ class AntigravityEngine {
                          /\b(banao|bana do|generate|create|bhejo|send|chahiye|de do|mang)\b/i.test(trimmed);
 
     // Always fetch latest API key dynamically from process.env or fallback
-    const currentKey = process.env.GEMINI_API_KEY || this.apiKey;
+    const currentKey = process.env.GEMINI_API_KEY || this.apiKey || FALLBACK_KEY;
     const model = process.env.GEMINI_MODEL || this.modelName || 'gemini-3.5-flash';
     const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentKey}`;
 
