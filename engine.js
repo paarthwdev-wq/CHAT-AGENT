@@ -98,8 +98,8 @@ User Request: "${trimmed}"`;
       },
       contents: contents,
       generationConfig: {
-        temperature: 0.65,
-        topP: 0.95,
+        temperature: 0.92,
+        topP: 0.98,
         maxOutputTokens: 8192,
         thinkingConfig: {
           thinkingBudget: 4096
