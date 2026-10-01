@@ -19,6 +19,8 @@ const engine = new AntigravityEngine(
 let waSock = null;
 let currentQrText = null;
 const botSentMessageIds = new Set();
+const recentRepliedTexts = new Set();
+const botStartTime = Math.floor(Date.now() / 1000); // Unix timestamp when server started
 
 // Web page for Render / Local browser viewing (Full All-in-One Dashboard)
 app.get('/', (req, res) => {
@@ -194,6 +196,12 @@ async function connectToWhatsApp() {
         continue;
       }
 
+      // Ignore old messages (history sync/backlog) sent before bot started running
+      const msgTime = Number(msg.messageTimestamp) || 0;
+      if (msgTime > 0 && msgTime < botStartTime - 60) {
+        continue; // Skip stale backlog message to prevent message storm on reconnect
+      }
+
       // 1. IGNORE NEWSLETTERS, BROADCASTS, STATUS & GROUPS
       if (!senderJid || senderJid.endsWith('@newsletter') || senderJid.endsWith('@broadcast') || senderJid === 'status@broadcast' || senderJid.endsWith('@g.us')) {
         continue;
@@ -228,6 +236,10 @@ async function connectToWhatsApp() {
       if (!messageText.trim()) continue;
 
       // Prevent bot from replying to its own AI answers or command confirmations
+      const checkText = messageText.trim();
+      if (recentRepliedTexts.has(checkText) || recentRepliedTexts.has(checkText.slice(0, 100))) {
+        continue; // Drop self-echo immediately
+      }
       if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄') || messageText.startsWith('📋') || messageText.startsWith('🗑️') || messageText.startsWith('⚠️') || messageText.startsWith('ℹ️') || messageText.startsWith('⚡')) {
         continue;
       }
@@ -350,6 +362,15 @@ async function connectToWhatsApp() {
         // Send text reply (Natural, clean, exactly like Desktop Antigravity)
         if (result.textResponse) {
           const sentMsg = await sock.sendMessage(targetJid, { text: result.textResponse });
+          
+          // Cache text to prevent echo loops
+          recentRepliedTexts.add(result.textResponse.trim());
+          recentRepliedTexts.add(result.textResponse.trim().slice(0, 100));
+          if (recentRepliedTexts.size > 200) {
+            const first = recentRepliedTexts.values().next().value;
+            recentRepliedTexts.delete(first);
+          }
+
           if (sentMsg?.key?.id) {
             botSentMessageIds.add(sentMsg.key.id);
             if (botSentMessageIds.size > 200) {
