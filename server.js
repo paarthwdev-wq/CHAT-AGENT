@@ -324,12 +324,23 @@ async function connectToWhatsApp() {
         // Send generated PDF or document if available
         if (result.fileToSend && fs.existsSync(result.fileToSend.path)) {
           console.log(`📤 [Sending Document] Sending ${result.fileToSend.filename} to ${senderNumber}`);
-          await sock.sendMessage(senderJid, {
-            document: fs.readFileSync(result.fileToSend.path),
-            mimetype: result.fileToSend.mime || 'application/pdf',
-            fileName: result.fileToSend.filename,
-            caption: `📄 ${result.fileToSend.filename}`
-          }, { quoted: msg });
+          const docBuffer = fs.readFileSync(result.fileToSend.path);
+          try {
+            await sock.sendMessage(senderJid, {
+              document: docBuffer,
+              mimetype: result.fileToSend.mime || 'application/pdf',
+              fileName: result.fileToSend.filename,
+              caption: `📄 ${result.fileToSend.filename}`
+            }, { quoted: msg });
+          } catch (docErr) {
+            console.log(`Fallback: Sending document without quoted message...`);
+            await sock.sendMessage(senderJid, {
+              document: docBuffer,
+              mimetype: result.fileToSend.mime || 'application/pdf',
+              fileName: result.fileToSend.filename,
+              caption: `📄 ${result.fileToSend.filename}`
+            });
+          }
         }
 
       } catch (err) {

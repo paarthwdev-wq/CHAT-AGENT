@@ -20,9 +20,8 @@ class AntigravityEngine {
     const trimmed = userMessage.trim();
     console.log(`[Antigravity] Processing request from ${senderId}: "${trimmed}"`);
 
-    // 1. Check if the user is asking for a PDF or file
-    const isPdfRequest = /\b(pdf|document|किताब|नोट्स|file|report)\b/i.test(trimmed) &&
-                         /\b(banao|bana do|generate|create|bhejo|send|chahiye|de do|mang)\b/i.test(trimmed);
+    // 1. Check if the user is asking for a PDF or file (broad match)
+    const isPdfRequest = /\b(pdf|document|doc|किताब|नोट्स|file|report|cheat sheet|checklist|guide)\b/i.test(trimmed);
 
     // Always fetch latest API key dynamically from process.env or fallback
     const currentKey = process.env.GEMINI_API_KEY || this.apiKey || FALLBACK_KEY;
@@ -74,11 +73,20 @@ If the user requests a PDF, write a comprehensive, well-structured document with
 
           fs.writeFileSync(txtTempPath, candidate, 'utf-8');
 
-          const safeTitle = trimmed.slice(0, 50).replace(/["']/g, '');
+          const safeTitle = trimmed.slice(0, 50).replace(/["'\\]/g, ' ').trim() || 'Antigravity Report';
           const pyScript = path.join(__dirname, 'generate_pdf.py');
 
-          // Run python PDF generator
-          execSync(`python "${pyScript}" --out "${pdfPath}" --title "${safeTitle}" --content "${txtTempPath}"`, {
+          // Detect python binary (python3 on Debian/Render Linux, python on Windows)
+          let pyCmd = 'python3';
+          try {
+            execSync('python3 --version', { stdio: 'ignore' });
+            pyCmd = 'python3';
+          } catch (e) {
+            pyCmd = 'python';
+          }
+
+          console.log(`[Antigravity] Generating PDF using ${pyCmd}...`);
+          execSync(`"${pyCmd}" "${pyScript}" --out "${pdfPath}" --title "${safeTitle}" --content "${txtTempPath}"`, {
             encoding: 'utf-8'
           });
 
@@ -86,8 +94,9 @@ If the user requests a PDF, write a comprehensive, well-structured document with
           if (fs.existsSync(txtTempPath)) fs.unlinkSync(txtTempPath);
 
           if (fs.existsSync(pdfPath)) {
+            console.log(`[Antigravity] PDF successfully created: ${pdfPath}`);
             return {
-              textResponse: `✅ आपका माँगा हुआ PDF तैयार कर दिया गया है:\n\n*${safeTitle}*\n\nनीचे फ़ाइल संलग्न है 👇`,
+              textResponse: `✅ आपका माँगा हुआ PDF तैयार कर दिया गया है:\n\n📄 *${safeTitle}*\n\nनीचे फ़ाइल संलग्न है 👇`,
               fileToSend: {
                 path: pdfPath,
                 filename: pdfFilename,
