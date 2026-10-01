@@ -32,6 +32,7 @@ app.get('/', (req, res) => {
         <meta charset="UTF-8">
         <title>Antigravity WhatsApp Hub</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        ${!isConnected ? '<meta http-equiv="refresh" content="3">' : ''}
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
