@@ -163,6 +163,29 @@ async function connectToWhatsApp() {
 
       // --- ADMIN COMMANDS (Directly via WhatsApp Chat) ---
       const cleanCmd = messageText.trim();
+
+      // Change API Key directly from WhatsApp: !key <new_api_key>
+      if (isAdmin && cleanCmd.startsWith('!key ')) {
+        const newKey = cleanCmd.replace('!key ', '').trim();
+        if (newKey.length > 20) {
+          const envPath = path.join(__dirname, '.env');
+          let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf-8') : '';
+          if (envContent.includes('GEMINI_API_KEY=')) {
+            envContent = envContent.replace(/GEMINI_API_KEY=.*/, `GEMINI_API_KEY=${newKey}`);
+          } else {
+            envContent += `\nGEMINI_API_KEY=${newKey}\n`;
+          }
+          fs.writeFileSync(envPath, envContent, 'utf-8');
+          process.env.GEMINI_API_KEY = newKey;
+          engine.apiKey = newKey;
+          engine.apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL || 'gemini-3.5-flash'}:generateContent?key=${newKey}`;
+          await sock.sendMessage(senderJid, { text: `🔑 Gemini API Key successfully UPDATED! Ab naya key active hai.` }, { quoted: msg });
+        } else {
+          await sock.sendMessage(senderJid, { text: `⚠️ Invalid API Key format. Use: !key your_new_key` }, { quoted: msg });
+        }
+        continue;
+      }
+
       if (isAdmin && cleanCmd.startsWith('!add ')) {
         const numToAdd = cleanCmd.replace('!add ', '').replace(/[^0-9]/g, '');
         if (numToAdd.length >= 10) {
