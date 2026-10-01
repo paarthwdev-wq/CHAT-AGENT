@@ -1,75 +1,89 @@
-# 📱 WhatsApp Antigravity AI Agent (OpenWA + Render)
+# ⚡ Antigravity WhatsApp AI Agent
 
-यह प्रोजेक्ट आपके **Antigravity (Google DeepMind / Gemini AI Engine)** को आपके **WhatsApp** से सीधे जोड़ता है।
-
----
-
-## 🌟 फीचर्स (Features)
-
-1. **डायरेक्ट WhatsApp इंटिग्रेशन**:
-   - OpenWA (`@open-wa/wa-automate`) के जरिए आपके पर्सनल WhatsApp नंबर से ऑटोमेशन।
-2. **स्मार्ट AI प्रोसेसिंग (Antigravity Engine)**:
-   - आपकी Gemini API Key और लेटेस्ट हाई-स्पीड `gemini-3.5-flash` इंजन द्वारा संचालित।
-3. **ऑन-डिमांड PDF और फाइल डिलीवरी**:
-   - WhatsApp पर जब भी आप लिखेंगे *"मुझे नोट्स की PDF बना दो"* या *"IBPS / कोडिंग गाइड की PDF भेजो"*, बॉट ऑटोमैटिकली स्टाइल की हुई PDF फ़ाइल जनरेट करके सीधे WhatsApp पर सेंड कर देगा।
-4. **Apper कंपेनियन**:
-   - डेस्कटॉप से सर्विस मॉनिटरिंग और क्विक टेस्ट सपोर्ट।
-5. **Render क्लाउड डिप्लॉयमेंट**:
-   - `Dockerfile` और `render.yaml` ब्लूप्रिंट रेडी है, जिससे आप Render पर 1-क्लिक में फ्री डिप्लॉय कर सकते हैं।
+A state-of-the-art AI assistant seamlessly integrated into WhatsApp, powered by **Google Antigravity & Gemini 3.5 Flash Engine**, with on-demand publication-quality PDF generation, Cloudflare Edge deployment, and real-time WhatsApp administrative control.
 
 ---
 
-## 📂 प्रोजेक्ट डायरेक्टरी संरचना
+## 🚀 Key Features
+
+- 💬 **Direct WhatsApp Integration**: Full two-way messaging using WebSocket automation.
+- 🧠 **Antigravity / Gemini Intelligence**: Powered by Google DeepMind's ultra-fast `gemini-3.5-flash` model.
+- 📄 **On-Demand PDF Generation**: Request any report, study guide, or cheat sheet in WhatsApp, and receive an automated, publication-ready PDF document.
+- 🌐 **Cloudflare Edge Gateway**: Global CDN routing with live status monitoring.
+- 🛡️ **Master Admin In-Chat Access Control**: Add or remove authorized phone numbers directly from WhatsApp using simple chat commands.
+
+---
+
+## 📱 WhatsApp Chat Commands
+
+You can manage user access and request documents directly within your WhatsApp chat.
+
+### 👑 Administrator Commands (For Master Admin Only)
+
+| Command | Syntax | Description | Example |
+| :--- | :--- | :--- | :--- |
+| **Add User** | `!add <Phone>` | Grants permission to a new phone number to use the bot. | `!add 919876543210` |
+| **Remove User** | `!remove <Phone>` | Revokes access for a specific phone number. | `!remove 919876543210` |
+| **List Users** | `!list` | Displays all authorized phone numbers currently registered. | `!list` |
+
+> **Note**: Always use the international country code without the `+` sign (e.g., `91` for India).
+
+---
+
+### 📄 Document & PDF Generation Prompts
+
+Simply text your request naturally in any language (English, Hindi, or Hinglish). When keywords like **PDF**, **document**, or **report** are detected, the agent compiles and delivers a formatted PDF attachment:
+
+- *"Create a comprehensive PDF roadmap for mastering Python in 30 days."*
+- *"Generate a 50-question IBPS English practice set in PDF format."*
+- *"Prepare a detailed summary report on Artificial Intelligence trends."*
+
+---
+
+## 📂 Repository Structure
 
 ```text
-whatsapp_antigravity/
-├── server.js            # मुख्य OpenWA WhatsApp गेटवे और एक्सप्रेस सर्वर
-├── engine.js            # Antigravity / Gemini AI क्वेरी एवं फ़ाइल प्रोसेसिंग इंजन
-├── generate_pdf.py      # ऑन-डिमांड PDF जनरेटर (ReportLab)
-├── companion.py         # Apper डेस्कटॉप कंपेनियन और टेस्टिंग टूल
-├── package.json         # Node.js डिपेंडेंसीज
-├── Dockerfile           # प्रोडक्शन डॉकर कंटेनर (Chromium + Node + Python)
-├── render.yaml          # Render 1-क्लिक ब्लूप्रिंट
-└── .env                 # आपकी Gemini API Key एवं कॉन्फ़िगरेशन
+├── index.js             # Cloudflare Worker Edge Gateway & Status Dashboard
+├── server.js            # Core WhatsApp Automation Engine & Message Dispatcher
+├── engine.js            # Antigravity AI Engine & Prompt Processing Pipeline
+├── generate_pdf.py      # Python ReportLab Document Generator
+├── companion.py         # Desktop Companion & Health Monitor
+├── start_bot.bat        # 1-Click Desktop Launcher (Local + Cloudflare Tunnel)
+├── update_and_restart.bat # 1-Click Refresh & Restart Tool
+├── Dockerfile           # Production Docker Build Configuration
+├── render.yaml          # Render Cloud Deployment Blueprint
+└── package.json         # Node.js Project Dependencies
 ```
 
 ---
 
-## 🚀 लोकल मशीन पर कैसे चलाएं (How to Run Locally)
+## 🛠️ Quick Start
 
-### 1. डिपेंडेंसीज इंस्टॉल करें:
+### 1. Install Dependencies
 ```bash
-cd whatsapp_antigravity
 npm install
 ```
 
-### 2. बॉट स्टार्ट करें:
+### 2. Configure Environment
+Set your API keys in `.env`:
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-3.5-flash
+PORT=3000
+```
+
+### 3. Run the Bot
 ```bash
 npm start
 ```
-- पहली बार रन करने पर टर्मिनल में एक **QR Code** आएगा।
-- अपने फ़ोन के WhatsApp में जाएं -> **Linked Devices** -> **Link a Device** -> QR Code स्कैन करें।
-- स्कैन होते ही बॉट एक्टिव हो जाएगा!
-
-### 3. टेस्ट करें:
-- अपने WhatsApp से किसी भी चैट में बॉट को मैसेज करें:
-  - *“नमस्ते, तुम क्या कर सकते हो?”* -> तुरंत टेक्स्ट जवाब मिलेगा।
-  - *“पायथन सीखने के लिए पूरा रोडमैप का PDF बना के दो”* -> बॉट पूरी गाइड की **PDF फ़ाइल** बनाकर WhatsApp पर सेंड करेगा।
+Scan the displayed QR code with WhatsApp (**Linked Devices > Link a Device**).
 
 ---
 
-## ☁️ Render पर डिप्लॉय कैसे करें (Deploy on Render)
+## ☁️ Deployment
 
-1. इस `whatsapp_antigravity` फोल्डर को अपने GitHub रिपॉजिटरी में पुश (Push) करें:
-   ```bash
-   git add .
-   git commit -m "Add WhatsApp Antigravity Bot"
-   git push origin main
-   ```
-2. [Render Dashboard](https://dashboard.render.com/) पर जाएं।
-3. **New +** पर क्लिक करें और **Blueprint** चुनें।
-4. अपनी GitHub रिपोजिटरी कनेक्ट करें — Render अपने आप `render.yaml` को पहचान लेगा।
-5. Environment Variables में:
-   - `GEMINI_API_KEY`: आपकी API Key (पहले से सेट है)
-   - `ALLOWED_NUMBERS`: (वैकल्पिक) अगर सिर्फ अपना नंबर रखना चाहते हैं (जैसे `919876543210@c.us`)।
-6. **Apply** पर क्लिक करें। Render ऑटोमैटिकली डॉकर इमेज बिल्ड करेगा और आपका बॉट 24/7 लाइव हो जाएगा।
+### Cloudflare Workers
+Deploy `index.js` to Cloudflare Workers to serve as the edge router and public dashboard.
+
+### Render / Docker
+Deploy using the included `Dockerfile` and `render.yaml` for a persistent 24/7 cloud container.
