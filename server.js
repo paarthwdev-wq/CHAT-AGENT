@@ -179,26 +179,32 @@ async function connectToWhatsApp() {
 
   // Handle incoming messages
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    // Accept both 'notify' (incoming from other users) and 'append' (self-notes sent from phone)
     if (type !== 'notify' && type !== 'append') return;
 
     for (const msg of messages) {
-      const myNumber = sock.user?.id ? sock.user.id.split(':')[0].replace(/[^0-9]/g, '') : null;
-      const myJid = myNumber ? `${myNumber}@s.whatsapp.net` : null;
+      // Master Phone number of the linked WhatsApp account
+      const myNumber = sock.user?.id ? sock.user.id.split(':')[0].replace(/[^0-9]/g, '') : '917991310726';
+      const myJid = `${myNumber}@s.whatsapp.net`;
+      const myLid = sock.user?.lid;
       const senderJid = msg.key?.remoteJid;
 
-      // 1. IGNORE NEWSLETTERS, BROADCASTS & CHANNELS (@newsletter, @broadcast)
-      if (!senderJid || senderJid.endsWith('@newsletter') || senderJid.endsWith('@broadcast')) {
+      // 1. IGNORE NEWSLETTERS, BROADCASTS, STATUS & GROUPS
+      if (!senderJid || senderJid.endsWith('@newsletter') || senderJid.endsWith('@broadcast') || senderJid === 'status@broadcast' || senderJid.endsWith('@g.us')) {
         continue;
       }
 
       const senderNumber = senderJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
 
-      // 2. Check if message is in "Message Yourself" (Notes to self)
-      const isSelfChat = (senderJid === myJid) || (myNumber && senderNumber === myNumber);
+      // 2. Identify if this is the owner's self-chat ("Message Yourself" / Notes to self)
+      const isSelfChat = (senderNumber === myNumber) ||
+                         (senderJid === myJid) ||
+                         (myLid && senderJid === myLid) ||
+                         (senderJid.startsWith(myNumber));
 
-      // If it's sent to someone else and fromMe is true, ignore it.
-      if (msg.key.fromMe && !isSelfChat) continue;
+      // If sent by me, but in a chat with someone else (talking to friends/family): STAY SILENT!
+      if (msg.key.fromMe && !isSelfChat) {
+        continue;
+      }
 
       const rawMsg = msg.message;
       if (!rawMsg) continue;
@@ -216,24 +222,34 @@ async function connectToWhatsApp() {
       if (!messageText.trim()) continue;
 
       // Prevent bot from replying to its own AI answers or command confirmations
-      if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄') || messageText.startsWith('📋') || messageText.startsWith('🗑️') || messageText.startsWith('⚠️') || messageText.startsWith('ℹ️')) {
+      if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄') || messageText.startsWith('📋') || messageText.startsWith('🗑️') || messageText.startsWith('⚠️') || messageText.startsWith('ℹ️') || messageText.startsWith('⚡')) {
         continue;
       }
 
+      // Load allowed numbers whitelist
       const numbersFile = path.join(__dirname, 'allowed_numbers.json');
-
-      // Load allowed numbers (Admin number 917991310726 always has master access)
       let allowedList = [];
       if (fs.existsSync(numbersFile)) {
         try {
           allowedList = JSON.parse(fs.readFileSync(numbersFile, 'utf-8'));
         } catch (e) { allowedList = []; }
       } else if (process.env.ALLOWED_NUMBERS) {
-        allowedList = process.env.ALLOWED_NUMBERS.split(',').map(n => n.trim()).filter(Boolean);
+        allowedList = process.env.ALLOWED_NUMBERS.split(',').map(n => n.trim().replace(/[^0-9]/g, '')).filter(Boolean);
       }
 
-      // Master Admin is automatically whoever scanned/linked the WhatsApp device, or self-chat, or master admin number
-      const isAdmin = (senderNumber === myNumber) || isSelfChat || (senderNumber === '917991310726');
+      const isAllowedContact = allowedList.includes(senderNumber);
+
+      // --- STRICT PRIVACY SHIELD ---
+      // Bot ONLY responds to:
+      // 1) The owner in "Message Yourself" (self-chat on the linked device)
+      // 2) Numbers explicitly added to allowedList (via !add <phone_number>)
+      // Regular contacts, family, friends NOT on the list are 100% IGNORED so personal chats are NEVER hijacked!
+      if (!isSelfChat && !isAllowedContact) {
+        continue;
+      }
+
+      // Master Admin is automatically the owner in self-chat or admin phone
+      const isAdmin = isSelfChat || (senderNumber === myNumber) || (senderNumber === '917991310726');
 
       // --- ADMIN COMMANDS (Directly via WhatsApp Chat) ---
       const cleanCmd = messageText.trim();
@@ -323,11 +339,12 @@ async function connectToWhatsApp() {
 
         await sock.sendPresenceUpdate('paused', senderJid);
 
+        const targetJid = isSelfChat ? myJid : senderJid;
+
         // Send text reply
         if (result.textResponse) {
-          const targetJid = senderJid;
           let replyText = result.textResponse;
-          if (!replyText.startsWith('🤖') && !replyText.startsWith('✅') && !replyText.startsWith('⚠️') && !replyText.startsWith('🔑')) {
+          if (!replyText.startsWith('🤖') && !replyText.startsWith('✅') && !replyText.startsWith('⚠️') && !replyText.startsWith('🔑') && !replyText.startsWith('📄')) {
             replyText = `🤖 ${replyText}`;
           }
           await sock.sendMessage(targetJid, { text: replyText });
@@ -335,23 +352,17 @@ async function connectToWhatsApp() {
 
         // Send generated PDF or document if available
         if (result.fileToSend && fs.existsSync(result.fileToSend.path)) {
-          console.log(`📤 [Sending Document] Sending ${result.fileToSend.filename} to ${senderNumber}`);
+          console.log(`📤 [Sending Document] Sending ${result.fileToSend.filename} to ${targetJid}`);
           const docBuffer = fs.readFileSync(result.fileToSend.path);
           try {
-            await sock.sendMessage(senderJid, {
-              document: docBuffer,
-              mimetype: result.fileToSend.mime || 'application/pdf',
-              fileName: result.fileToSend.filename,
-              caption: `📄 ${result.fileToSend.filename}`
-            }, { quoted: msg });
-          } catch (docErr) {
-            console.log(`Fallback: Sending document without quoted message...`);
-            await sock.sendMessage(senderJid, {
+            await sock.sendMessage(targetJid, {
               document: docBuffer,
               mimetype: result.fileToSend.mime || 'application/pdf',
               fileName: result.fileToSend.filename,
               caption: `📄 ${result.fileToSend.filename}`
             });
+          } catch (docErr) {
+            console.error('Failed to send document:', docErr.message);
           }
         }
 
