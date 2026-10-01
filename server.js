@@ -120,6 +120,10 @@ app.post('/api/send', async (req, res) => {
     }
     return res.json({ success: true });
   } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // Live in-memory log buffer for instant web debugging
 const liveLogs = [];
 function addLog(msg) {
