@@ -223,8 +223,12 @@ async function connectToWhatsApp() {
       const senderNumber = senderJid.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
 
       // 2. Identify if this is the owner's self-chat ("Message Yourself" / Notes to self)
-      // WhatsApp multi-device sends self-messages with fromMe=true and remoteJid either as myJid, myLid, or partner's JID
-      const isSelfChat = (senderNumber === myNumber) ||
+      // On modern WhatsApp multi-device:
+      // - Self-chat packets arrive with remoteJid ending with @lid and msg.key.fromMe = true
+      // - Or remoteJid ending with @s.whatsapp.net for myNumber / myJid
+      const isLidSelfChat = senderJid.endsWith('@lid') && Boolean(msg.key.fromMe);
+      const isSelfChat = isLidSelfChat ||
+                         (senderNumber === myNumber) ||
                          (senderJid === myJid) ||
                          (myLid && senderJid === myLid) ||
                          (senderJid.startsWith(myNumber));
@@ -376,7 +380,10 @@ async function connectToWhatsApp() {
 
         await sock.sendPresenceUpdate('paused', senderJid);
 
-        const targetJid = isSelfChat ? myJid : senderJid;
+        // Route response to the active conversation window (whether @lid or standard JID)
+        const targetJid = senderJid;
+
+        addLog(`🚀 DISPATCHING AI REPLY to ${targetJid}: "${result.textResponse?.slice(0, 40)}..."`);
 
         // Send text reply (Natural, clean, exactly like Desktop Antigravity)
         if (result.textResponse) {
