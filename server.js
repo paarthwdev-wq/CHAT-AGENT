@@ -133,7 +133,7 @@ async function connectToWhatsApp() {
   const sock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
-    browser: ['Antigravity AI', 'Desktop', '1.0.0']
+    browser: ['Ubuntu', 'Chrome', '20.0.04']
   });
 
   waSock = sock;
@@ -169,12 +169,13 @@ async function connectToWhatsApp() {
     if (type !== 'notify') return;
 
     for (const msg of messages) {
-      const myJid = sock.user?.id.split(':')[0] + '@s.whatsapp.net';
-      const senderJid = msg.key.remoteJid;
+      // 1. COMPLETELY IGNORE OWN MESSAGES (fromMe = true)
+      // This ensures you never get loopbacks or self-messages echoing
+      if (msg.key.fromMe) continue;
 
-      // Allow self-messages ONLY if chatting with oneself (Message Yourself / Notes)
-      // If fromMe is true but it's sent to someone else, ignore.
-      if (msg.key.fromMe && senderJid !== myJid) continue;
+      const senderJid = msg.key.remoteJid;
+      const myJid = sock.user?.id.split(':')[0] + '@s.whatsapp.net';
+      if (senderJid === myJid) continue; // Ignore self chat completely
 
       const messageText = msg.message?.conversation ||
                           msg.message?.extendedTextMessage?.text ||
