@@ -232,15 +232,19 @@ async function connectToWhatsApp() {
         allowedList = process.env.ALLOWED_NUMBERS.split(',').map(n => n.trim()).filter(Boolean);
       }
 
-      // Master Admin is automatically whoever scanned/linked the WhatsApp device
-      const isAdmin = (senderNumber === myNumber);
+      // Master Admin is automatically whoever scanned/linked the WhatsApp device, or self-chat, or master admin number
+      const isAdmin = (senderNumber === myNumber) || isSelfChat || (senderNumber === '917991310726');
 
       // --- ADMIN COMMANDS (Directly via WhatsApp Chat) ---
       const cleanCmd = messageText.trim();
 
-      // Change API Key directly from WhatsApp: !key <new_api_key>
-      if (isAdmin && cleanCmd.startsWith('!key ')) {
-        const newKey = cleanCmd.replace('!key ', '').trim();
+      // Change API Key directly from WhatsApp: supports '!key ...', '! Key <...>', '!KEY: ...' etc.
+      const isKeyCmd = /^\s*!\s*key\s*[:=]?\s*/i.test(cleanCmd);
+      if (isAdmin && isKeyCmd) {
+        let newKey = cleanCmd.replace(/^\s*!\s*key\s*[:=]?\s*/i, '').trim();
+        // Remove enclosing angle brackets or quotes if user copied like <key> or "key"
+        newKey = newKey.replace(/^[<"']+|[>"']+$/g, '').trim();
+
         if (newKey.length > 20) {
           const envPath = path.join(__dirname, '.env');
           let envContent = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf-8') : '';
@@ -260,8 +264,9 @@ async function connectToWhatsApp() {
         continue;
       }
 
-      if (isAdmin && cleanCmd.startsWith('!add ')) {
-        const numToAdd = cleanCmd.replace('!add ', '').replace(/[^0-9]/g, '');
+      const isAddCmd = /^\s*!\s*add\s*[:=]?\s*/i.test(cleanCmd);
+      if (isAdmin && isAddCmd) {
+        const numToAdd = cleanCmd.replace(/^\s*!\s*add\s*[:=]?\s*/i, '').replace(/[^0-9]/g, '');
         if (numToAdd.length >= 10) {
           if (!allowedList.includes(numToAdd)) {
             allowedList.push(numToAdd);

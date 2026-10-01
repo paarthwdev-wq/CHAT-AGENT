@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const FALLBACK_KEY = 'AQ.Ab8RN6JQdy19LPGRkCTXkL0uCbTv9Uft-cxD-_Q1DCm8urqUIg';
+const FALLBACK_KEY = 'AQ.Ab8RN6K7mP37ipQ4KUHDadNeVsyQOpM8qpOSxlt-J8kBcHQUvQ';
 
 class AntigravityEngine {
   constructor(apiKey, modelName = 'gemini-3.5-flash') {
