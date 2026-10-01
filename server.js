@@ -4,7 +4,6 @@ const express = require('express');
 const qrcodeTerminal = require('qrcode-terminal');
 const path = require('path');
 const fs = require('fs');
-const TelegramBot = require('node-telegram-bot-api');
 const AntigravityEngine = require('./engine');
 
 const app = express();
@@ -439,74 +438,110 @@ async function connectToWhatsApp() {
 connectToWhatsApp();
 
 // --- TELEGRAM BOT SERVICE (Antigravity 24/7 on Telegram) ---
-let tgBot = null;
 const DEFAULT_TG_TOKEN = Buffer.from('ODg5ODU4MTQ1MjpBQUVORzJEZFp6R0tOc1UwQkJRZzJVdTBZVzhZbGp5UW9Ybw==', 'base64').toString('utf8');
 const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_TOKEN.trim().length > 15)
   ? process.env.TELEGRAM_BOT_TOKEN.trim()
   : DEFAULT_TG_TOKEN;
 
-if (TELEGRAM_BOT_TOKEN && TELEGRAM_BOT_TOKEN.trim().length > 15) {
+async function sendTelegramMessage(chatId, text) {
+  if (!text) return;
+  const chunks = text.length > 4000 ? (text.match(/[\s\S]{1,4000}/g) || [text]) : [text];
+  for (const chunk of chunks) {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: chunk })
+    }).catch(e => console.error('TG send error:', e.message));
+  }
+}
+
+async function sendTelegramChatAction(chatId, action = 'typing') {
+  await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendChatAction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, action })
+  }).catch(() => {});
+}
+
+async function sendTelegramDocument(chatId, filePath, caption = '') {
   try {
-    tgBot = new TelegramBot(TELEGRAM_BOT_TOKEN.trim(), { polling: true });
-    addLog('✈️ Telegram Antigravity Bot initialized and polling for messages! (@Koyish_bot)');
+    const fileBytes = fs.readFileSync(filePath);
+    const form = new FormData();
+    form.append('chat_id', String(chatId));
+    form.append('document', new Blob([fileBytes]), path.basename(filePath));
+    if (caption) form.append('caption', caption);
 
-    tgBot.on('message', async (msg) => {
-      const chatId = msg.chat.id;
-      const text = msg.text?.trim();
-      const senderName = msg.from.first_name || msg.from.username || 'User';
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, {
+      method: 'POST',
+      body: form
+    });
+  } catch (err) {
+    console.error('TG document send error:', err.message);
+  }
+}
 
-      if (!text) return;
+async function startTelegramPolling() {
+  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.length < 15) {
+    addLog('ℹ️ Telegram Bot Token not configured.');
+    return;
+  }
 
-      if (text === '/start') {
-        return tgBot.sendMessage(chatId, `⚡ *नमस्ते ${senderName}!*\n\nमैं *Antigravity* हूँ — Google DeepMind का autonomous AI agent.\n\nमुझसे कोई भी कोडिंग, मैथ्स, रिसर्च सवाल पूछें या PYQ/किताब की *PDF* मांगें — मैं यहाँ 24/7 उपलब्ध हूँ! 🔥`, { parse_mode: 'Markdown' });
-      }
+  addLog('✈️ Telegram Antigravity Bot initialized and polling for messages! (@Koyish_bot)');
+  let offset = 0;
 
-      addLog(`✈️ [Telegram Received] From: ${senderName} (${chatId}) | Text: "${text}"`);
+  while (true) {
+    try {
+      const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${offset}&timeout=20`);
+      const data = await resp.json();
 
-      // Keep typing indicator active during deep thought/research
-      const typingHeartbeat = setInterval(() => {
-        tgBot.sendChatAction(chatId, 'typing').catch(() => {});
-      }, 4000);
+      if (data && data.ok && Array.isArray(data.result)) {
+        for (const update of data.result) {
+          offset = update.update_id + 1;
+          const msg = update.message;
+          if (!msg || !msg.text) continue;
 
-      try {
-        await tgBot.sendChatAction(chatId, 'typing');
+          const chatId = msg.chat.id;
+          const text = msg.text.trim();
+          const senderName = msg.from?.first_name || msg.from?.username || 'User';
 
-        const result = await engine.processQuery(text, `tg_${chatId}`);
+          if (text === '/start') {
+            await sendTelegramMessage(chatId, `⚡ *नमस्ते ${senderName}!*\n\nमैं *Antigravity* हूँ — Google DeepMind का autonomous AI agent.\n\nमुझसे कोई भी कोडिंग, मैथ्स, रिसर्च सवाल पूछें या PYQ/किताब की *PDF* मांगें — मैं यहाँ 24/7 उपलब्ध हूँ! 🔥`);
+            continue;
+          }
 
-        if (result.textResponse) {
-          // Send text reply (chunk if telegram limit of 4096 exceeds)
-          if (result.textResponse.length > 4000) {
-            const chunks = result.textResponse.match(/[\s\S]{1,4000}/g) || [result.textResponse];
-            for (const chunk of chunks) {
-              await tgBot.sendMessage(chatId, chunk);
+          addLog(`✈️ [Telegram Received] From: ${senderName} (${chatId}) | Text: "${text}"`);
+
+          // Heartbeat typing indicator
+          const typingInterval = setInterval(() => {
+            sendTelegramChatAction(chatId, 'typing');
+          }, 4000);
+
+          try {
+            await sendTelegramChatAction(chatId, 'typing');
+            const result = await engine.processQuery(text, `tg_${chatId}`);
+
+            if (result.textResponse) {
+              await sendTelegramMessage(chatId, result.textResponse);
             }
-          } else {
-            await tgBot.sendMessage(chatId, result.textResponse);
+
+            if (result.fileToSend && fs.existsSync(result.fileToSend.path)) {
+              addLog(`✈️ [Telegram Document] Sending ${result.fileToSend.filename} to ${chatId}`);
+              await sendTelegramDocument(chatId, result.fileToSend.path, `📄 ${result.fileToSend.filename}`);
+            }
+          } catch (procErr) {
+            console.error('❌ Error in Telegram handler:', procErr);
+            addLog(`❌ [Telegram Error] ${procErr.message}`);
+            await sendTelegramMessage(chatId, `⚠️ त्रुटि हुई: ${procErr.message}`);
+          } finally {
+            clearInterval(typingInterval);
           }
         }
-
-        // Send PDF document if generated
-        if (result.fileToSend && fs.existsSync(result.fileToSend.path)) {
-          addLog(`✈️ [Telegram Document] Sending ${result.fileToSend.filename} to ${chatId}`);
-          await tgBot.sendDocument(chatId, result.fileToSend.path, {
-            caption: `📄 ${result.fileToSend.filename}`
-          });
-        }
-      } catch (tgErr) {
-        console.error('❌ Error in Telegram handler:', tgErr);
-        tgBot.sendMessage(chatId, `⚠️ त्रुटि हुई: ${tgErr.message}`);
-      } finally {
-        clearInterval(typingHeartbeat);
       }
-    });
-
-    tgBot.on('polling_error', (error) => {
-      console.warn('⚠️ Telegram Polling Error:', error.code || error.message);
-    });
-
-  } catch (err) {
-    console.error('❌ Failed to start Telegram bot:', err.message);
+    } catch (pollErr) {
+      // Network hiccup or timeout, wait 3 seconds and retry
+      await new Promise(r => setTimeout(r, 3000));
+    }
   }
-} else {
-  addLog('ℹ️ Telegram Bot Token not set. Set TELEGRAM_BOT_TOKEN in .env or Render to activate Telegram!');
 }
+
+startTelegramPolling();
