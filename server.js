@@ -169,13 +169,14 @@ async function connectToWhatsApp() {
     if (type !== 'notify') return;
 
     for (const msg of messages) {
-      // 1. COMPLETELY IGNORE OWN MESSAGES (fromMe = true)
-      // This ensures you never get loopbacks or self-messages echoing
-      if (msg.key.fromMe) continue;
-
-      const senderJid = msg.key.remoteJid;
       const myJid = sock.user?.id.split(':')[0] + '@s.whatsapp.net';
-      if (senderJid === myJid) continue; // Ignore self chat completely
+      const senderJid = msg.key.remoteJid;
+
+      // Check if message is in "Message Yourself" (Notes to self)
+      const isSelfChat = (senderJid === myJid);
+
+      // If it's sent to someone else and fromMe is true, ignore it.
+      if (msg.key.fromMe && !isSelfChat) continue;
 
       const messageText = msg.message?.conversation ||
                           msg.message?.extendedTextMessage?.text ||
@@ -183,6 +184,11 @@ async function connectToWhatsApp() {
                           '';
 
       if (!messageText.trim()) continue;
+
+      // Prevent bot from replying to its own AI answers
+      if (messageText.startsWith('🤖') || messageText.startsWith('✅') || messageText.startsWith('🔑') || messageText.startsWith('📄')) {
+        continue;
+      }
 
       const senderNumber = senderJid.split('@')[0];
       const numbersFile = path.join(__dirname, 'allowed_numbers.json');
