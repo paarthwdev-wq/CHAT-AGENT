@@ -4,6 +4,7 @@ const express = require('express');
 const qrcodeTerminal = require('qrcode-terminal');
 const path = require('path');
 const fs = require('fs');
+const TelegramBot = require('node-telegram-bot-api');
 const AntigravityEngine = require('./engine');
 
 const app = express();
@@ -436,3 +437,66 @@ async function connectToWhatsApp() {
 }
 
 connectToWhatsApp();
+
+// --- TELEGRAM BOT SERVICE (Antigravity 24/7 on Telegram) ---
+let tgBot = null;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+
+if (TELEGRAM_BOT_TOKEN && TELEGRAM_BOT_TOKEN.trim().length > 15) {
+  try {
+    tgBot = new TelegramBot(TELEGRAM_BOT_TOKEN.trim(), { polling: true });
+    addLog('✈️ Telegram Antigravity Bot initialized and polling for messages!');
+
+    tgBot.on('message', async (msg) => {
+      const chatId = msg.chat.id;
+      const text = msg.text?.trim();
+      const senderName = msg.from.first_name || msg.from.username || 'User';
+
+      if (!text) return;
+
+      if (text === '/start') {
+        return tgBot.sendMessage(chatId, `⚡ *नमस्ते ${senderName}!*\n\nमैं *Antigravity* हूँ — Google DeepMind का autonomous AI agent.\n\nमुझसे कोई भी कोडिंग, मैथ्स, रिसर्च सवाल पूछें या PYQ/किताब की *PDF* मांगें — मैं यहाँ 24/7 उपलब्ध हूँ! 🔥`, { parse_mode: 'Markdown' });
+      }
+
+      addLog(`✈️ [Telegram Received] From: ${senderName} (${chatId}) | Text: "${text}"`);
+
+      try {
+        await tgBot.sendChatAction(chatId, 'typing');
+
+        const result = await engine.processQuery(text, `tg_${chatId}`);
+
+        if (result.textResponse) {
+          // Send text reply (chunk if telegram limit of 4096 exceeds)
+          if (result.textResponse.length > 4000) {
+            const chunks = result.textResponse.match(/[\s\S]{1,4000}/g) || [result.textResponse];
+            for (const chunk of chunks) {
+              await tgBot.sendMessage(chatId, chunk);
+            }
+          } else {
+            await tgBot.sendMessage(chatId, result.textResponse);
+          }
+        }
+
+        // Send PDF document if generated
+        if (result.fileToSend && fs.existsSync(result.fileToSend.path)) {
+          addLog(`✈️ [Telegram Document] Sending ${result.fileToSend.filename} to ${chatId}`);
+          await tgBot.sendDocument(chatId, result.fileToSend.path, {
+            caption: `📄 ${result.fileToSend.filename}`
+          });
+        }
+      } catch (tgErr) {
+        console.error('❌ Error in Telegram handler:', tgErr);
+        tgBot.sendMessage(chatId, `⚠️ त्रुटि हुई: ${tgErr.message}`);
+      }
+    });
+
+    tgBot.on('polling_error', (error) => {
+      console.warn('⚠️ Telegram Polling Error:', error.code || error.message);
+    });
+
+  } catch (err) {
+    console.error('❌ Failed to start Telegram bot:', err.message);
+  }
+} else {
+  addLog('ℹ️ Telegram Bot Token not set. Set TELEGRAM_BOT_TOKEN in .env or Render to activate Telegram!');
+}
