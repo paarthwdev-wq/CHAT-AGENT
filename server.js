@@ -154,9 +154,21 @@ async function connectToWhatsApp() {
     }
 
     if (connection === 'close') {
-      const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-      console.log(`[Connection Closed] Reconnecting: ${shouldReconnect}...`);
-      if (shouldReconnect) {
+      const statusCode = (lastDisconnect?.error)?.output?.statusCode;
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+      console.log(`[Connection Closed] Status: ${statusCode}, LoggedOut: ${isLoggedOut}`);
+
+      // If user unlinked from phone, clear session and reset client
+      if (isLoggedOut) {
+        console.log('⚠️ Device unlinked from WhatsApp! Cleaning session and preparing fresh QR...');
+        waSock = null;
+        currentQrText = null;
+        try {
+          fs.rmSync(authDir, { recursive: true, force: true });
+        } catch (e) {}
+        setTimeout(() => connectToWhatsApp(), 2000);
+      } else {
+        waSock = null;
         connectToWhatsApp();
       }
     } else if (connection === 'open') {
