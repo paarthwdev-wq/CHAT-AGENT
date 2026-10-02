@@ -94,10 +94,29 @@ app.get('/', (req, res) => {
             • Remove User: <code>!remove &lt;phone_number&gt;</code><br>
             • List Users: <code>!list</code>
           </div>
+
+          <form onsubmit="event.preventDefault(); const val=document.getElementById('keyInput').value; if(!val)return; fetch('/api/key', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ apiKey: val }) }).then(r=>r.json()).then(d=>{ alert(d.message || d.error); location.reload(); });" style="margin-top:16px; display:flex; gap:8px;">
+            <input type="text" id="keyInput" placeholder="Paste new Gemini API Key here" style="flex:1; padding:10px 12px; background:#1e293b; border:1px solid #334155; border-radius:8px; color:white; font-size:13px;" required />
+            <button type="submit" style="background:#0284c7; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:bold; font-size:13px;">Update Key</button>
+          </form>
         </div>
       </body>
     </html>
   `);
+});
+
+// Direct API Key update endpoint
+app.post('/api/key', (req, res) => {
+  const { apiKey } = req.body;
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 15) {
+    return res.status(400).json({ error: 'Invalid API key format' });
+  }
+  const cleanKey = apiKey.trim().replace(/^[<"']+|[>"']+$/g, '');
+  process.env.GEMINI_API_KEY = cleanKey;
+  engine.apiKey = cleanKey;
+  config.geminiApiKey = cleanKey;
+  addLog(`🔑 Gemini API Key updated via Web Admin! [${cleanKey.slice(0, 8)}...]`);
+  return res.json({ success: true, message: 'API Key successfully updated! बॉट अब इस की पर एक्टिव है।' });
 });
 
 // External send API
@@ -140,10 +159,14 @@ function addLog(msg) {
 }
 
 app.get('/health', (req, res) => {
+  const currentKey = process.env.GEMINI_API_KEY || '';
   res.json({
     status: 'ok',
     uptime: Math.floor(process.uptime()),
     primaryModel: config.primaryModel,
+    fallbackModel: config.fallbackModel,
+    apiKeyConfigured: !!(currentKey && currentKey.length > 15),
+    apiKeyPrefix: currentKey ? currentKey.slice(0, 10) + '...' + currentKey.slice(-4) : 'MISSING',
     whatsappConnected: !!waSock?.user,
     telegramConfigured: !!(config.telegramBotToken && config.telegramBotToken.length > 15)
   });
