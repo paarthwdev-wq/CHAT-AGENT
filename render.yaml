@@ -5,16 +5,23 @@ services:
     plan: free
     region: oregon
     dockerfilePath: Dockerfile
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-3.8-flash
+        value: gemini-2.5-flash
+      - key: GEMINI_FALLBACK_MODEL
+        value: gemini-1.5-flash
+      - key: MODEL_TEMPERATURE
+        value: "0.4"
+      - key: MODEL_TOP_P
+        value: "0.9"
+      - key: MAX_OUTPUT_TOKENS
+        value: "2048"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
       - key: ALLOWED_NUMBERS
         sync: false
       - key: PORT
-        value: 3000
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-
+        value: "3000"

@@ -4,17 +4,16 @@ const express = require('express');
 const qrcodeTerminal = require('qrcode-terminal');
 const path = require('path');
 const fs = require('fs');
+const config = require('./config');
+const memory = require('./memory');
 const AntigravityEngine = require('./engine');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 app.use(express.json());
 
 // Initialize Antigravity AI Engine
-const engine = new AntigravityEngine(
-  process.env.GEMINI_API_KEY,
-  process.env.GEMINI_MODEL || 'gemini-3.5-flash'
-);
+const engine = new AntigravityEngine(config.geminiApiKey, config.primaryModel);
 
 let waSock = null;
 let currentQrText = null;
@@ -124,22 +123,54 @@ app.post('/api/send', async (req, res) => {
   }
 });
 
-// Live in-memory log buffer for instant web debugging
+// Live in-memory log buffer for instant web debugging (sanitized)
 const liveLogs = [];
+function sanitizeForLogs(msg) {
+  if (typeof msg !== 'string') return String(msg);
+  return msg.replace(/([0-9]{8,12}:[a-zA-Z0-9_-]{25,})/g, '[REDACTED_BOT_TOKEN]')
+            .replace(/(AQ\.[a-zA-Z0-9_-]{25,})/g, '[REDACTED_API_KEY]')
+            .replace(/(AIzaSy[a-zA-Z0-9_-]{25,})/g, '[REDACTED_API_KEY]');
+}
+
 function addLog(msg) {
-  const line = `[${new Date().toISOString()}] ${msg}`;
+  const line = `[${new Date().toISOString()}] ${sanitizeForLogs(msg)}`;
   console.log(line);
   liveLogs.push(line);
   if (liveLogs.length > 100) liveLogs.shift();
 }
 
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.floor(process.uptime()),
+    primaryModel: config.primaryModel,
+    whatsappConnected: !!waSock?.user,
+    telegramConfigured: !!(config.telegramBotToken && config.telegramBotToken.length > 15)
+  });
+});
+
 app.get('/logs', (req, res) => {
   res.type('text/plain').send(liveLogs.join('\n') || 'No logs recorded yet.');
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   addLog(`🌐 Web/Healthcheck Server running on http://localhost:${PORT}`);
 });
+
+// Graceful Shutdown for Render
+function handleShutdown(signal) {
+  addLog(`🛑 Received ${signal}. Gracefully flushing state and shutting down...`);
+  try {
+    memory.flush();
+  } catch (e) {}
+  server.close(() => {
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 3000);
+}
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
 
 async function connectToWhatsApp() {
   const authDir = path.join(__dirname, 'session_data');
@@ -437,11 +468,10 @@ async function connectToWhatsApp() {
 
 connectToWhatsApp();
 
-// --- TELEGRAM BOT SERVICE (Antigravity 24/7 on Telegram) ---
-const DEFAULT_TG_TOKEN = Buffer.from('ODg5ODU4MTQ1MjpBQUVORzJEZFp6R0tOc1UwQkJRZzJVdTBZVzhZbGp5UW9Ybw==', 'base64').toString('utf8');
+// --- TELEGRAM BOT SERVICE (24/7 on Telegram) ---
 const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_TOKEN.trim().length > 15)
   ? process.env.TELEGRAM_BOT_TOKEN.trim()
-  : DEFAULT_TG_TOKEN;
+  : (config.telegramBotToken || '');
 
 async function sendTelegramMessage(chatId, text) {
   if (!text) return;
@@ -486,7 +516,7 @@ async function startTelegramPolling() {
     return;
   }
 
-  addLog('✈️ Telegram Antigravity Bot initialized and polling for messages! (@Koyish_bot)');
+  addLog('✈️ Telegram Bot initialized and polling for messages! (@Koyish_bot)');
   let offset = 0;
 
   while (true) {
@@ -505,7 +535,7 @@ async function startTelegramPolling() {
           const senderName = msg.from?.first_name || msg.from?.username || 'User';
 
           if (text === '/start') {
-            await sendTelegramMessage(chatId, `⚡ *नमस्ते ${senderName}!*\n\nमैं *Antigravity* हूँ — Google DeepMind का autonomous AI agent.\n\nमुझसे कोई भी कोडिंग, मैथ्स, रिसर्च सवाल पूछें या PYQ/किताब की *PDF* मांगें — मैं यहाँ 24/7 उपलब्ध हूँ! 🔥`);
+            await sendTelegramMessage(chatId, `नमस्ते ${senderName}! मैं आपका AI सहायक हूँ। मुझसे कोई भी सवाल पूछ सकते हैं या कोडिंग, अध्ययन और किसी भी विषय पर मदद ले सकते हैं। बताइए, क्या सहायता करूँ?`);
             continue;
           }
 
