@@ -32,18 +32,40 @@ class AntigravityEngine {
    */
   _isExplicitDocumentRequest(text) {
     if (!text || typeof text !== 'string') return false;
-    const lower = text.toLowerCase();
+    const trimmed = text.trim();
+    const lower = trimmed.toLowerCase();
 
-    // Explicit command with "pdf"
+    // 1. Negative filters: casual tech questions about the PDF format or reading/parsing PDFs
+    if (/\b(how\s+to\s+(read|open|parse|extract|view|edit|split|merge)|what\s+is(\s+a)?\s+pdf|pdf\s+(library|package|module|reader|viewer|parser))\b/i.test(lower)) {
+      return false;
+    }
+
+    // 2. Explicit PDF requests in English, Hindi, Hinglish
     if (/\bpdf\b/i.test(lower)) {
-      if (/\b(generate|create|make|send|download|banao|bana\s*do|bhejo|chahiye|de\s*do|format|file)\b/i.test(lower)) {
+      // Intent verbs
+      if (/\b(generate|create|make|send|download|banao|bana\s*do|bhejo|chahiye|de\s*do|format|file|karo|do|tayyar|provide|give)\b/i.test(lower)) {
+        return true;
+      }
+      // Topic patterns ending with or containing pdf, e.g. "history notes pdf", "python cheat sheet pdf", "pdf on leetcode", "pdf for ibps"
+      if (/\b(notes|guide|cheat\s*sheet|roadmap|compendium|book|paper|pyq|syllabus|questions|summary|report)\s+pdf\b/i.test(lower)) {
+        return true;
+      }
+      if (/\bpdf\s+(on|for|of|about|me|mein)\b/i.test(lower)) {
+        return true;
+      }
+      // Concise message: e.g. "history notes pdf", "upsc syllabus pdf"
+      if (/^[a-zA-Z0-9\s_-]+\s+pdf$/i.test(trimmed)) {
         return true;
       }
     }
 
-    // Explicit document/report generation phrasing
-    const explicitDocRegex = /\b(create|make|generate|download|banao|bana\s*do)\s+(a\s+|an\s+)?(document|report|cheat\s*sheet)\b/i;
-    return explicitDocRegex.test(lower);
+    // 3. Explicit Document / Report / Cheatsheet phrasing (even without the literal word "pdf")
+    const docActionRegex = /\b(create|make|generate|download|banao|bana\s*do|prepare|draft|build)\b[\s\w-]{1,35}\b(document|report|cheat\s*sheet|study\s*guide|compendium)\b/i;
+    if (docActionRegex.test(lower)) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -58,7 +80,7 @@ class AntigravityEngine {
     if (!text) return null;
 
     // Remove accidental leakage of internal prompt markers
-    text = text.replace(/\[CRITICAL AGENTIC MASTER DIRECTIVE:[\s\S]*?\]/gi, '').trim();
+    text = text.replace(/\[CRITICAL AGENTIC MASTER DIRECTIVE[\s\S]*?\]/gi, '').trim();
     text = text.replace(/^System:\s*/i, '').trim();
 
     return text.length > 0 ? text : null;
@@ -70,7 +92,8 @@ class AntigravityEngine {
   async _callGeminiApi(model, contents, apiKey, isDocRequest = false) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-    const maxTokens = isDocRequest ? Math.min(config.maxOutputTokens * 2, 8192) : config.maxOutputTokens;
+    const maxTokens = isDocRequest ? 8192 : config.maxOutputTokens;
+    const timeoutMs = isDocRequest ? 60000 : config.requestTimeoutMs;
 
     const payload = {
       systemInstruction: {
@@ -86,7 +109,7 @@ class AntigravityEngine {
 
     const response = await axios.post(url, payload, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: config.requestTimeoutMs
+      timeout: timeoutMs
     });
 
     return response.data;
@@ -96,7 +119,7 @@ class AntigravityEngine {
    * Calls the primary model with retry and controlled fallback on failure.
    */
   async _generateWithFallback(contents, sessionId, isDocRequest) {
-    const currentKey = process.env.GEMINI_API_KEY || this.apiKey || config.geminiApiKey;
+    const currentKey = this.apiKey || process.env.GEMINI_API_KEY || config.geminiApiKey;
     if (!currentKey || currentKey.trim().length < 10) {
       console.warn(`[Engine] No valid GEMINI_API_KEY configured.`);
       return {
@@ -106,16 +129,19 @@ class AntigravityEngine {
       };
     }
 
-    const primary = process.env.GEMINI_MODEL || this.modelName || config.primaryModel;
+    const primary = this.modelName || process.env.GEMINI_MODEL || config.primaryModel;
     const fallback = process.env.GEMINI_FALLBACK_MODEL || this.fallbackModel || config.fallbackModel;
 
     const modelsToTry = [primary];
     if (fallback && fallback !== primary) {
       modelsToTry.push(fallback);
     }
-    if (!modelsToTry.includes('gemini-3.5-flash-lite')) {
-      modelsToTry.push('gemini-3.5-flash-lite');
-    }
+    // High-availability active Gemini 3.x fallback tier
+    ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'].forEach(m => {
+      if (!modelsToTry.includes(m)) {
+        modelsToTry.push(m);
+      }
+    });
 
     let lastError = null;
 
@@ -202,7 +228,18 @@ class AntigravityEngine {
     // Construct prompt payload
     let promptText = trimmed;
     if (isDocRequest) {
-      promptText = `${trimmed}\n\n[Instruction: Format the response thoroughly with clear chapters, headers, and organized points suitable for reading in a generated reference document.]`;
+      promptText = `${trimmed}\n\n[CRITICAL AGENTIC MASTER DIRECTIVE FOR DOCUMENT GENERATION:
+You are compiling a publication-grade, comprehensive executive reference document/compendium that will be compiled into a professional PDF.
+Structure the document thoroughly with the following elements:
+1. # MAIN DOCUMENT TITLE (Bold, authoritative)
+2. *Executive Subtitle or Scope Description*
+3. ## Executive Summary / System Architecture
+4. Detailed content broken into sequential chapters (## 1. Topic, ## 2. Topic, etc.)
+5. Markdown Tables (| Column 1 | Column 2 | ...) with comparative data, parameters, marks, or timelines.
+6. Callout boxes using blockquotes (> **Key Takeaway:** ... or > **Exam Hack / Pro Tip:** ...)
+7. Clear numbered steps or bullet points with bold prefixes.
+8. ## Conclusion & Quick Reference Cheat Sheet
+Provide deep, thorough, and complete substance without artificial placeholders or abbreviated answers. Ensure all information is accurate, high-density, and structured.]`;
     }
 
     const contents = [...history, {
@@ -272,15 +309,25 @@ class AntigravityEngine {
 
     fs.writeFileSync(txtTempPath, contentText, 'utf-8');
 
-    const safeTitle = userQuery.slice(0, 40).replace(/["'\\]/g, ' ').trim() || 'Document';
+    let safeTitle = userQuery.slice(0, 50).replace(/["'\\]/g, ' ').trim() || 'Document';
+    const firstH1 = contentText.match(/^#\s+(.+)$/m);
+    if (firstH1 && firstH1[1].trim().length > 3) {
+      safeTitle = firstH1[1].trim().replace(/["'\\]/g, ' ').slice(0, 60);
+    }
+
     const pyScript = path.join(__dirname, 'generate_pdf.py');
 
-    let pyCmd = 'python3';
+    let pyCmd = 'python';
     try {
-      execSync('python3 --version', { stdio: 'ignore' });
-      pyCmd = 'python3';
-    } catch (e) {
+      execSync('python --version', { stdio: 'ignore' });
       pyCmd = 'python';
+    } catch (e) {
+      try {
+        execSync('python3 --version', { stdio: 'ignore' });
+        pyCmd = 'python3';
+      } catch (e2) {
+        pyCmd = 'python';
+      }
     }
 
     console.log(`[Engine] Invoking PDF tool with ${pyCmd}...`);

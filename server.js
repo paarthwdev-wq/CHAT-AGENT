@@ -429,6 +429,15 @@ async function connectToWhatsApp() {
         // Send typing indicator
         await sock.sendPresenceUpdate('composing', senderJid);
 
+        const isDocReq = engine._isExplicitDocumentRequest(messageText);
+        if (isDocReq) {
+          try {
+            await sock.sendMessage(senderJid, {
+              text: `⚡ *Antigravity AI:* आपका दस्तावेज़ (PDF) तैयार किया जा रहा है... कृपया कुछ सेकंड प्रतीक्षा करें। 📄`
+            });
+          } catch (ackErr) {}
+        }
+
         // Process with Antigravity / Gemini
         const result = await engine.processQuery(messageText, senderNumber);
 
@@ -564,9 +573,15 @@ async function startTelegramPolling() {
 
           addLog(`✈️ [Telegram Received] From: ${senderName} (${chatId}) | Text: "${text}"`);
 
+          const isDocReq = engine._isExplicitDocumentRequest(text);
+          if (isDocReq) {
+            await sendTelegramChatAction(chatId, 'upload_document');
+            await sendTelegramMessage(chatId, `⚡ *Antigravity AI:* आपका दस्तावेज़ (PDF) तैयार किया जा रहा है... कृपया कुछ सेकंड प्रतीक्षा करें। 📄`);
+          }
+
           // Heartbeat typing indicator
           const typingInterval = setInterval(() => {
-            sendTelegramChatAction(chatId, 'typing');
+            sendTelegramChatAction(chatId, isDocReq ? 'upload_document' : 'typing');
           }, 4000);
 
           try {
