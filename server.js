@@ -159,7 +159,7 @@ function addLog(msg) {
 }
 
 app.get('/health', (req, res) => {
-  const currentKey = process.env.GEMINI_API_KEY || '';
+  const currentKey = engine.apiKey || config.geminiApiKey || process.env.GEMINI_API_KEY || '';
   res.json({
     status: 'ok',
     uptime: Math.floor(process.uptime()),
