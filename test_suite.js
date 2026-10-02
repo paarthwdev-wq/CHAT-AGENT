@@ -79,7 +79,7 @@ async function runTests() {
   assert(config.temperature >= 0.0 && config.temperature <= 0.6, `Temperature (${config.temperature}) is conservative (<= 0.6)`);
   assert(config.topP >= 0.8 && config.topP <= 1.0, `topP (${config.topP}) is within recommended bounds`);
   assert(config.maxOutputTokens > 500 && config.maxOutputTokens <= 4096, `maxOutputTokens (${config.maxOutputTokens}) is reasonable`);
-  assert(config.primaryModel === 'gemini-2.5-flash', `Primary model is stable production model (${config.primaryModel})`);
+  assert(config.primaryModel === 'gemini-3.8-flash-medium', `Primary model is configured as (${config.primaryModel})`);
 
   // --- UNIT TEST 5: Graceful Error Handling (Missing / Invalid Key) ---
   console.log('\n--- 5. Testing Error Handling on Missing/Invalid API Key ---');

@@ -4,8 +4,8 @@ const path = require('path');
 const config = {
   // Gemini API Configuration
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  primaryModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-  fallbackModel: process.env.GEMINI_FALLBACK_MODEL || 'gemini-1.5-flash',
+  primaryModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash-medium',
+  fallbackModel: process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.8-flash',
 
   // Generation Parameters (Conservative, reliable, conversational)
   temperature: parseFloat(process.env.MODEL_TEMPERATURE || '0.4'),
