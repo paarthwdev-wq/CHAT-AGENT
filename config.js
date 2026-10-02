@@ -2,10 +2,11 @@ require('dotenv').config();
 const path = require('path');
 
 const DEFAULT_TG_TOKEN = Buffer.from('ODg5ODU4MTQ1MjpBQUVORzJEZFp6R0tOc1UwQkJRZzJVdTBZVzhZbGp5UW9Ybw==', 'base64').toString('utf8');
+const DEFAULT_GEMINI_KEY = Buffer.from('QVEuQWI4Uk42SnlBNnpCOVBaTEttamN3T0ctdXA1bG9uLUhKV1hxUTFWb25LX2c4X1ZFbWc=', 'base64').toString('utf8');
 
 const config = {
   // Gemini API Configuration
-  geminiApiKey: process.env.GEMINI_API_KEY || '',
+  geminiApiKey: process.env.GEMINI_API_KEY || DEFAULT_GEMINI_KEY,
   primaryModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
   fallbackModel: process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash',
 
