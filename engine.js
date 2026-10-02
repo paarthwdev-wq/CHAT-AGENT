@@ -113,6 +113,9 @@ class AntigravityEngine {
     if (fallback && fallback !== primary) {
       modelsToTry.push(fallback);
     }
+    if (!modelsToTry.includes('gemini-3.5-flash-lite')) {
+      modelsToTry.push('gemini-3.5-flash-lite');
+    }
 
     let lastError = null;
 
