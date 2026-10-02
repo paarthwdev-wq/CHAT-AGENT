@@ -10,9 +10,9 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-3.8-flash-medium
-      - key: GEMINI_FALLBACK_MODEL
         value: gemini-3.8-flash
+      - key: GEMINI_FALLBACK_MODEL
+        value: gemini-3.5-flash
       - key: MODEL_TEMPERATURE
         value: "0.4"
       - key: MODEL_TOP_P

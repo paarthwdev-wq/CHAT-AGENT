@@ -120,8 +120,8 @@ class AntigravityEngine {
       const model = modelsToTry[mIdx];
       const isFallback = mIdx > 0;
 
-      // Try up to 2 attempts for the primary model (with backoff)
-      const maxAttempts = isFallback ? 1 : 2;
+      // Try up to 3 attempts for the primary model with backoff on demand spikes
+      const maxAttempts = isFallback ? 1 : 3;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const startTime = Date.now();
